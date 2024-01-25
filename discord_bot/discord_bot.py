@@ -206,6 +206,42 @@ async def respond(message,source):
     # Adding the response to history
     update_history(llm_message,llm_response,source)
 
+def check_message_commands(message,source):
+    """Checks the first words of the message for various commands.
+    if commands were found function executes the commands and returns
+    true. If commands were not found it returns false.
+
+    Args:
+        message (object): Discord message object (or is it actually a dictionary...)
+    """
+    command = ""
+    # Depending on which type of chat we have the first or the second word is the command.
+    # ie. were we called by name or was this a private chat.
+    if len(message.content.split()) > 2:
+        command = message.content.split()[1]
+    else:
+        command = message.content.split()[0]
+
+    if "forget" in command:
+            clear_history(source)
+            return True
+    
+    return False
+
+def clear_history(source):
+    """Clean up message history and update the timestamp to be this very moment
+
+    Args:
+        source (string): The chat history string string to clean
+    """
+    author_message_dictionary = {}
+
+    author_message_dictionary['lastupdate'] = int(time.time())
+    author_message_dictionary['messages'] = []
+    message_dictionary[source] = author_message_dictionary
+    print(f"Cleaned history for {source}")
+
+
 # copy-paste code from real python articke
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -230,23 +266,23 @@ async def on_message(message):
             print(f"Somebody said to me:{message.content}")
             # Check the message content if its second word is "forget" 
             # we reset the history
-            if "forget" in message.content.split()[1]:
-                message_dictionary['lastupdate'] = int(time.time())
-                message_dictionary["messages"] = []
-                print("Cleaned history")
+            source = message.channel
+            if check_message_commands(message,source):
+                print("Ran command...")
             else:
-                source = message.channel
                 task = asyncio.create_task(respond(message,source))
                 await task
     except Exception as e:
         print("Unknown thing?")
         print(e)
     # Lets see if its a private chat?
-    print(f"Channel type is {message.channel.type}")
     if isinstance(message.channel, discord.DMChannel):
         source = message.author
-        task = asyncio.create_task(respond(message,source))
-        await task
+        if check_message_commands(message,source):
+            print("Ran a command...")
+        else:
+            task = asyncio.create_task(respond(message,source))
+            await task
 
 
 client.run(TOKEN)
