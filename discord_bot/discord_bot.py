@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # ref: https://realpython.com/how-to-make-a-discord-bot-python/
 
-from email.mime import message
 import os
 import requests
 import discord
@@ -10,6 +9,7 @@ import json
 import time
 import re
 from bs4 import BeautifulSoup
+from nltk.probability import FreqDist
 
 from dotenv import load_dotenv
 
@@ -19,6 +19,7 @@ ollama_port = "11434"
 #model = "phi:2.7b-chat-v2-fp16"
 #model = "neural-chat:7b-v3.3-q6_K"
 model = "lanlunatic:latest"
+tokensize = 32678
 timestamp = int(time.time())
 author_message = {'lastupdate':timestamp, 'messages': []}
 # Dictionary where the key is the author/source and value is author_message dictionary
@@ -44,7 +45,7 @@ def generate_response(message):
             string_message = string_message + "," + json_entry
     json_test = json.loads(string_message + "]")
 
-    json_data = { "model":model, "messages": json_test, "stream": False, "options": {"num_ctx": 32678} }
+    json_data = { "model":model, "messages": json_test, "stream": False, "options": {"num_ctx": tokensize } }
     print(json_data)
     url = f"{ollama_server}:{ollama_port}/api/chat"
     print(url)
@@ -143,7 +144,17 @@ def prepare_llm_message(user_message,author):
 
     message_history = check_message_history(author)
     json_message = json.dumps({ "role": "user", "content": user_message })
+
+    # Trying to estimate the size of the message in tokens
+    fdist = FreqDist(user_message)
+    print(f"Amount tokens in your message is {fdist.N()}")
+
+    # Create a function to estimate the amount of tokens in the given message history
+    # decide what to do if the amount of tokens is more than the token window.
+    # How would you truncate the message. Snip from the end and tell the AI that there
+    # is too much data? That user should chunk the data and so on?....
     message_history.append(json_message)
+    
 
     return message_history
 
@@ -241,8 +252,8 @@ def clear_history(source):
     message_dictionary[source] = author_message_dictionary
     print(f"Cleaned history for {source}")
 
+##### Core Discord logic? ####
 
-# copy-paste code from real python articke
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
@@ -261,11 +272,10 @@ async def on_message(message):
     if message.author == client.user:
         return
     try:
-        # check if list message.mentions contains client.user as value
+        # check if channel message mentions the bot. If yes, then respond.
         if client.user in message.mentions:
             print(f"Somebody said to me:{message.content}")
-            # Check the message content if its second word is "forget" 
-            # we reset the history
+            # Check the message content for commands otherwise its just a message
             source = message.channel
             if check_message_commands(message,source):
                 print("Ran command...")
@@ -275,7 +285,7 @@ async def on_message(message):
     except Exception as e:
         print("Unknown thing?")
         print(e)
-    # Lets see if its a private chat?
+    # Lets see if the message is a private chat?
     if isinstance(message.channel, discord.DMChannel):
         source = message.author
         if check_message_commands(message,source):
