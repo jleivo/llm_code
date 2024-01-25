@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # ref: https://realpython.com/how-to-make-a-discord-bot-python/
 
+from email.mime import message
 import os
 import requests
 import discord
@@ -19,7 +20,9 @@ ollama_port = "11434"
 #model = "neural-chat:7b-v3.3-q6_K"
 model = "lanlunatic:latest"
 timestamp = int(time.time())
-message_dictionary = {'lastupdate':timestamp, 'messages': []}
+author_message = {'lastupdate':timestamp, 'messages': []}
+# Dictionary where the key is the author/source and value is author_message dictionary
+message_dictionary = {}
 
 def generate_response(message):
     """Generate response to the message with an LLM
@@ -55,7 +58,7 @@ def generate_response(message):
         print(f"Response value is {return_value}")
         return return_value
 
-def check_message_history():
+def check_message_history(author):
     """Check and return message history, if any.
 
     Function checks if the chat history is younger than 15 minutes.
@@ -70,12 +73,15 @@ def check_message_history():
     # if the timestamp is more than 15 minutes old, make the dictionary to be
     # just the timestamp
     now = int(time.time())
-    if (now - message_dictionary['lastupdate']) > max_history_age:
-        message_dictionary['lastupdate'] = now
+    if message_dictionary.get(author) is None:
+        return []
+    author_message_dictionary = message_dictionary.get(author)
+    if (now - author_message_dictionary['lastupdate']) > max_history_age:
+        author_message_dictionary['lastupdate'] = now
         print ("Message history is old, dumped it")
         return []
     else:
-        return message_dictionary["messages"]
+        return author_message_dictionary["messages"]
 
 def extract_urls(message):
     """Extract URLS from given message
@@ -110,7 +116,7 @@ async def send_response(message, reply):
     else:
         await message.channel.send(reply.strip())
 
-def prepare_llm_message(user_message):
+def prepare_llm_message(user_message,author):
     """Prepare LLM input for the model from a Discord message
 
     Function gets the message history and allows us to develop
@@ -118,6 +124,7 @@ def prepare_llm_message(user_message):
 
     Args:
         user_message (string): The message from the user
+        author (string): The source of the message
     
     Returns:
         list: List of JSON strings in a list
@@ -134,23 +141,25 @@ def prepare_llm_message(user_message):
             page_content = page_content + (extract_text(url)).strip()
         user_message = user_message + "here is the content of the URL:" + page_content
 
-    message_history = check_message_history()
+    message_history = check_message_history(author)
     json_message = json.dumps({ "role": "user", "content": user_message })
     message_history.append(json_message)
 
     return message_history
 
-
-def update_history(message_history, llm_response):
+def update_history(message_history, llm_response, author):
     """Adds the message to history and updates time stamp
 
     Args:
         llm_message (string): The response from the LLM
     """
+    author_message_dictionary = {}
+
     json_message = json.dumps( {"role":"assistant", "content":llm_response})
     message_history.append(json_message.strip())
-    message_dictionary['lastupdate'] = int(time.time())
-    message_dictionary['messages'] = message_history
+    author_message_dictionary['lastupdate'] = int(time.time())
+    author_message_dictionary['messages'] = message_history
+    message_dictionary[author] = author_message_dictionary
 
 def extract_text(url):
     """Extracting the text from the URL
@@ -179,6 +188,24 @@ def extract_text(url):
     
     return text
 
+async def respond(message,source):
+    """Function to generate response back to the message
+
+    Args:
+        message (object): The full message from Discord
+
+    """
+    print("Generating response")
+    # Getting the previous message history
+    llm_message = prepare_llm_message(message.content,source)
+    # Generating a response
+    llm_response = generate_response(llm_message)
+    # Talking back to the channel
+    task = asyncio.create_task(send_response(message, llm_response))
+    await task
+    # Adding the response to history
+    update_history(llm_message,llm_response,source)
+
 # copy-paste code from real python articke
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -201,7 +228,6 @@ async def on_message(message):
         # check if list message.mentions contains client.user as value
         if client.user in message.mentions:
             print(f"Somebody said to me:{message.content}")
-            print("Generating response")
             # Check the message content if its second word is "forget" 
             # we reset the history
             if "forget" in message.content.split()[1]:
@@ -209,18 +235,18 @@ async def on_message(message):
                 message_dictionary["messages"] = []
                 print("Cleaned history")
             else:
-                # Getting the previous message history
-                llm_message = prepare_llm_message(message.content)
-                # Generating a response
-                llm_response = generate_response(llm_message)
-                # Talking back to the channel
-                task = asyncio.create_task(send_response(message, llm_response))
+                source = message.channel
+                task = asyncio.create_task(respond(message,source))
                 await task
-                # Adding the response to history
-                update_history(llm_message,llm_response)
-
     except Exception as e:
-        print("Private message?")
+        print("Unknown thing?")
         print(e)
+    # Lets see if its a private chat?
+    print(f"Channel type is {message.channel.type}")
+    if isinstance(message.channel, discord.DMChannel):
+        source = message.author
+        task = asyncio.create_task(respond(message,source))
+        await task
+
 
 client.run(TOKEN)
