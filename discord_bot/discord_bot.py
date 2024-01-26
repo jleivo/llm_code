@@ -228,7 +228,7 @@ def check_message_commands(message,source):
     command = ""
     # Depending on which type of chat we have the first or the second word is the command.
     # ie. were we called by name or was this a private chat.
-    if len(message.content.split()) > 2:
+    if len(message.content.split()) >= 2:
         command = message.content.split()[1]
     else:
         command = message.content.split()[0]
