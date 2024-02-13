@@ -1,1 +1,0 @@
-curl -k -X POST -H "Content-Type: application/json" --data @core.json https://stablediffusion.intra.leivo/sdapi/v1/txt2img
