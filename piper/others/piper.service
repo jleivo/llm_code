@@ -5,6 +5,8 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=/srv/piper
+User=piper
+Group=piper
 Type=simple
 ExecStart=/srv/piper/piper_wrapper.sh
 
