@@ -1,0 +1,12 @@
+[Unit]
+Description=Piper
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+WorkingDirectory=/srv/piper
+Type=simple
+ExecStart=/srv/piper/piper_wrapper.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,38 @@
+server {
+    listen 80;
+    server_name ollama.intra.leivo;
+
+    location /tts/ {
+        rewrite ^/tts/?(.*)$ /$1 break;
+        proxy_pass http://localhost:5500/;
+	# headers to prevent caching
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    location /tts {
+        return 301 /tts/;
+    }
+
+    # Handle /download requests
+    location /download/ {
+        proxy_pass http://localhost:5500/download/;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    location /download {
+        return 301 /download/;
+    }
+
+    # Handle music requests requests
+    location /static/uploads {
+        proxy_pass http://localhost:5500/static/uploads;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+}

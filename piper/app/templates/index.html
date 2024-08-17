@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Speech</title>
+</head>
+<body>
+    <h1>Text to Speech</h1>
+    <form method="POST">
+        <div>
+            <textarea name="text" rows="4" cols="50" placeholder="Enter your text here"></textarea>
+        </div>
+        <div>
+            <input type="radio" id="en" name="language" value="EN" checked>
+            <label for="en">English</label><br>
+            <input type="radio" id="fi" name="language" value="FI">
+            <label for="fi">Finnish</label>
+        </div>
+        <div>
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+
+    {% if wav_filename %}
+    <h2>Generated Audio</h2>
+    <audio controls="controls">
+        <source src="{{ url_for('static', filename='uploads/' ~ wav_filename) }}" type="audio/wav">
+        Your browser does not support the audio element.
+    </audio>
+    <br>
+    <a href="{{ url_for('download_file', filename=wav_filename) }}">Download audio file</a>
+    {% endif %}
+</body>
+</html>
