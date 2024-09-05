@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "team_jarvis"
+version = "0.1.0"
+description = "team_jarvis using crewAI"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<=3.13"
+crewai = { extras = ["tools"], version = "^0.36.1" }
+
+[tool.poetry.scripts]
+team_jarvis = "team_jarvis.main:run"
+train = "team_jarvis.main:train"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
