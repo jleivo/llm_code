@@ -1,0 +1,11 @@
+langchain-nomic
+langchain_community
+tiktoken
+langchainhub
+langchain-elasticsearch
+langchain
+langgraph
+tavily-python
+gpt4all
+langchain-text-splitters
+python-dotenv
