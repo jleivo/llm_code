@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text to Speech</title>
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
+    <table>
+        <tr>
+       <th align=left style="vertical-align:top">
     <h1>Text to Speech</h1>
     <form method="POST">
         <div>
@@ -22,8 +26,11 @@
         </div>
     </form>
 
+
     {% if wav_filename %}
     <h2>Generated Audio</h2>
+    <p>Given text was <br> {{ text }}</p>
+
     <audio controls="controls">
         <source src="{{ url_for('static', filename='uploads/' ~ wav_filename) }}" type="audio/wav">
         Your browser does not support the audio element.
@@ -31,5 +38,11 @@
     <br>
     <a href="{{ url_for('download_file', filename=wav_filename) }}">Download audio file</a>
     {% endif %}
+            </th>
+        <th align=left>
+            <img src="../images/piper.png" width="50%">
+        </th>
+        </tr>
+    </table>
 </body>
 </html>
