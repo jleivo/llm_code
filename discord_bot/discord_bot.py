@@ -15,10 +15,7 @@ from dotenv import load_dotenv
 
 ollama_server = "http://192.168.8.20"
 ollama_port = "11434"
-#model = "llama2-uncensored:7b-chat-q6_K"
-#model = "phi:2.7b-chat-v2-fp16"
-#model = "neural-chat:7b-v3.3-q6_K"
-model = "lanlunatic:latest"
+model = "lunatic-leivo-model"
 timestamp = int(time.time())
 author_message = {'lastupdate':timestamp, 'messages': []}
 # Dictionary where the key is the author/source and value is author_message dictionary

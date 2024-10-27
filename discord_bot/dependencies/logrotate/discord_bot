@@ -1,0 +1,6 @@
+/var/log/discord_bot.log {
+    daily
+    rotate 3
+    compress
+    delaycompress
+}
