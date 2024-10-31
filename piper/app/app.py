@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, send_file, url_for
 import requests
 from io import BytesIO
 import os
+import time
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Define a folder to save the uploaded files
@@ -13,6 +14,7 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     wav_filename = None
+    text = None
     if request.method == 'POST':
         text = request.form['text']
         language = request.form['language']
@@ -26,7 +28,7 @@ def index():
 
         if response.status_code == 200:
             wav_data = BytesIO(response.content)
-            wav_filename = 'output.wav'
+            wav_filename = f"output.wav{time.time()}"
             wav_filepath = os.path.join(app.config['UPLOAD_FOLDER'], wav_filename)
 
             # Save the received WAV file to the uploads folder
@@ -35,7 +37,7 @@ def index():
         else:
             return f"Error: Unable to process the request. Status code: {response.status_code}", response.status_code
 
-    return render_template('index.html', wav_filename=wav_filename)
+    return render_template('index.html', wav_filename=wav_filename, text=text)
 
 @app.route('/download/<filename>')
 def download_file(filename):

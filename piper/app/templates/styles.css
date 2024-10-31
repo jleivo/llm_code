@@ -1,0 +1,83 @@
+body {
+    background-color: #002b36;
+    color: #839496;
+    font-family: Arial, sans-serif;
+}
+
+a, button {
+    color: #268bd2;
+    text-decoration: none; /* Removes underline from links */
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+h1, h2, h3, a {
+    color: #b58900; /* Primary accent color */
+}
+
+.secondary-text {
+    color: #586e75;
+}
+
+button.primary {
+    background-color: #b58900;
+    color: #002b36;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+
+button.secondary {
+    background-color: #268bd2;
+    color: #002b36;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+
+.card {
+    background-color: #073642;
+    border: 1px solid #002b36;
+    padding: 20px;
+    margin: 10px 0;
+}
+
+.services-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    justify-content: center;
+}
+
+.service-card {
+    background-color: #073642;
+    color: #839496;
+    border: 1px solid #002b36;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    width: 200px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.service-card img {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+.service-card h3 {
+    color: #b58900; /* Mustard accent */
+    font-size: 1.2em;
+    margin: 0 0 10px;
+}
+
+.service-card p {
+    color: #586e75; /* Muted text color */
+    font-size: 0.9em;
+}
+
+.service-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}

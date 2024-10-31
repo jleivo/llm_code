@@ -1,0 +1,14 @@
+[Unit]
+Description=Lunatic Leivo model - a discord bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+WorkingDirectory=/srv/discord_bot
+User=lunatic
+Group=lunatic
+Type=simple
+ExecStart=/srv/discord_bot/lunatic_wrapper.sh
+
+[Install]
+WantedBy=multi-user.target
