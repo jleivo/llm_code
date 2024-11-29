@@ -1,6 +1,6 @@
 # LLM doodlings
 
-My various LLM related doodlings with really raw ZZcode, sometimes more finetuned.
+My various LLM related doodlings with really raw code, sometimes more fine tuned.
 
 ## dall-e
 
@@ -16,4 +16,3 @@ More details in [discord_bot/readme.md](discord_bot/readme.md)
 ## modelfiles
 
 Dump of various modelfiles I used in [Open WebUI](https://github.com/open-webui/open-webui) and/or [Ollama](https://ollama.ai). 
-
