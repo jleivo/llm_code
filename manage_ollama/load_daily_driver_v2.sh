@@ -1,6 +1,6 @@
 #!/bin/bash
 # List of drivers we want to maintain
-DRIVERS=('day-qwen2.5:32b' 'day-deepseek-r1:32b')
+DRIVERS=('day-qwen2.5:32b' 'day-deepseek-r1:32b' 'qwen2.5-coder:32b-base-q4_K_M')
 # Array to track model statuses
 declare -A MODEL_STATUS
 
@@ -23,7 +23,7 @@ done
 LOAD_COUNT=0
 for DRIVER in "${DRIVERS[@]}"; do
     if [ "${MODEL_STATUS[$DRIVER]}" == "not_loaded" ]; then
-        let LOAD_COUNT+=1
+        (( LOAD_COUNT++)) || true
     fi
 done
 
@@ -35,8 +35,8 @@ if [ "$LOAD_COUNT" -gt 0 ]; then
     TOTAL_USED=0
     TOTAL_FREE=0
     while IFS=',' read -r USED TOTAL; do
-        let TOTAL_USED+=$((USED))
-        let TOTAL_FREE+=$((TOTAL))
+        (( TOTAL_USED += USED))
+        (( TOTAL_FREE += TOTAL))
     done <<< "$GPU_USAGE"
     
     # Calculate required VRAM based on how many models need loading (24 GB per model)
@@ -52,6 +52,6 @@ if [ "$LOAD_COUNT" -gt 0 ]; then
             fi
         done
     else
-        echo "Not enough VRAM available to load models."
+        echo "Not enough VRAM available to load all models."
     fi
 fi
