@@ -1,28 +1,28 @@
 #!/bin/bash
-# List of drivers we want to maintain
-DRIVERS=('day-qwen2.5:32b' 'day-deepseek-r1:32b' 'qwen2.5-coder:32b-base-q4_K_M')
-# Array to track model statuses
-declare -A MODEL_STATUS
+# List of models we want to maintain
+MODELS=('day-qwen2.5:32b' 'day-deepseek-r1:32b' 'qwen2.5-coder:32b-base-q4_K_M')
+LOGFILE='/var/log/ollama_daily_models.log'
+declare -A MODEL_STATUS # Array to track model statuses
 
 # Initialize model status array
-for DRIVER in "${DRIVERS[@]}"; do
-    MODEL_STATUS[$DRIVER]="not_loaded"
+for MODEL in "${MODELS[@]}"; do
+    MODEL_STATUS[$MODEL]="not_loaded"
 done
 
 # Check which drivers are already loaded
-LOADED_DRIVERS=$(docker exec -it ollama ollama ps | awk '{print $1}' | tail -n +2)
-for LOADED_MODEL in ${LOADED_DRIVERS}; do
-    for DRIVER in "${DRIVERS[@]}"; do
-        if [[ "$LOADED_MODEL" == *"$DRIVER"* ]]; then
-            MODEL_STATUS[$DRIVER]="loaded"
+LOADED_MODELS=$(docker exec -it ollama ollama ps | awk '{print $1}' | tail -n +2)
+for LOADED_MODEL in ${LOADED_MODELS}; do
+    for MODEL in "${MODELS[@]}"; do
+        if [[ "$LOADED_MODEL" == *"$MODEL"* ]]; then
+            MODEL_STATUS[$MODEL]="loaded"
         fi
     done
 done
 
 # Determine how many models need loading
 LOAD_COUNT=0
-for DRIVER in "${DRIVERS[@]}"; do
-    if [ "${MODEL_STATUS[$DRIVER]}" == "not_loaded" ]; then
+for MODEL in "${MODELS[@]}"; do
+    if [ "${MODEL_STATUS[$MODEL]}" == "not_loaded" ]; then
         (( LOAD_COUNT++)) || true
     fi
 done
@@ -45,10 +45,10 @@ if [ "$LOAD_COUNT" -gt 0 ]; then
     # Check if we have enough free VRAM to load the models
     if [ "$REQUIRED_VRAM" -le "$TOTAL_FREE" ]; then
         # Load each model that's not already loaded
-        for DRIVER in "${DRIVERS[@]}"; do
-            if [ "${MODEL_STATUS[$DRIVER]}" == "not_loaded" ]; then
-                curl http://localhost:11434/api/generate -d "{\"model\": \"${DRIVER}\", \"keep_alive\": -1}"
-                curl http://localhost:11434/api/chat -d "{\"model\": \"${DRIVER}\", \"keep_alive\": -1}"
+        for MODEL in "${MODELS[@]}"; do
+            if [ "${MODEL_STATUS[$MODEL]}" == "not_loaded" ]; then
+                curl http://localhost:11434/api/generate -d "{\"model\": \"${MODEL}\", \"keep_alive\": -1}"
+                curl http://localhost:11434/api/chat -d "{\"model\": \"${MODEL}\", \"keep_alive\": -1}"
             fi
         done
     else
