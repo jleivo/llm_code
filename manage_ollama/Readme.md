@@ -1,3 +1,27 @@
+# Table of contents
+- [Table of contents](#table-of-contents)
+- [Ollama Model Update Script](#ollama-model-update-script)
+  - [Description](#description)
+  - [Usage](#usage)
+  - [Configuration Files](#configuration-files)
+  - [Log File](#log-file)
+  - [Temporary Files](#temporary-files)
+  - [Dependencies](#dependencies)
+  - [Example Exclude File Content](#example-exclude-file-content)
+  - [Log Sample](#log-sample)
+  - [Author](#author)
+- [Load Daily Driver Models Script](#load-daily-driver-models-script)
+  - [Overview](#overview)
+  - [Usage](#usage-1)
+  - [Models Managed](#models-managed)
+  - [Requirements](#requirements)
+  - [Workflow](#workflow)
+  - [Notes](#notes)
+- [Printout Proxy Server](#printout-proxy-server)
+  - [Usage](#usage-2)
+  - [Dependencies](#dependencies-1)
+  - [Notes](#notes-1)
+
 # Ollama Model Update Script
 
 ## Description
@@ -71,3 +95,28 @@ This script, `load_daily_driver_v2.sh`, automates the process of loading specifi
 
 ## Notes
 - The script assumes the Ollama service is running and accessible at `localhost:11434`.
+
+# Printout Proxy Server
+
+Simple debugging tool to see the messages being passed to Ollama.
+
+This Python `printout_proxy.py` script sets up a simple HTTP proxy server that forwards requests to another server running on `localhost:11434`. It supports various HTTP methods (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS) and prints the response headers and body from the target server.
+
+## Usage
+
+To run the proxy server:
+```bash
+./printout_proxy.py
+```
+The proxy will listen on port 8888. Redirect your requests to http://localhost:8888 to use this proxy.
+
+## Dependencies
+
+- Python 3.x
+- requests library (pip install requests)
+
+## Notes
+
+- The script excludes certain headers like 'Host', 'Content-Length', and 'Transfer-Encoding' when forwarding the request.
+- The response from the target server is printed, including its status code, reason phrase, headers, and body (if any).
+- Error handling is implemented to send a 500 Internal Server Error in case of exceptions.
