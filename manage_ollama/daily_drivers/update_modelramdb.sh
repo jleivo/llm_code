@@ -48,7 +48,7 @@ while IFS= read -r model; do
     if [ -z "$RAMNEED" ]; then
         log_message "failed to load model $model"
     else
-        echo -n "$model $RAMNEED" >> "$MODELRAMDB"
+        echo "$model $RAMNEED" >> "$MODELRAMDB"
     fi
 
 done < "$MODELFILE"
