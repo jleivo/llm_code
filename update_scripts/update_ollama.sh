@@ -20,7 +20,7 @@ function cleanup() {
 
 function ollama_start() {
     echo -n "  Starting ollama "
-    docker run -d --gpus=all -e CUDA_VISIBLE_DEVICES=GPU-0a895c3d-0f7f-46f1-50ab-1f84e96f7083,GPU-16bf6b6f-a008-eecc-50c8-eac39eae9f7d,GPU-016209dd-9c62-0a1b-0fde-97cfb3b0c090 -v ollama:/root/.ollama -p 11434:11434 -e OLLAMA_MAX_LOADED_MODELS=4 --name ollama --restart always ollama/ollama && { echo "Updated ollama container successfully!"; return 0; }
+    docker run -d --gpus=all -e CUDA_VISIBLE_DEVICES=GPU-0a895c3d-0f7f-46f1-50ab-1f84e96f7083,GPU-16bf6b6f-a008-eecc-50c8-eac39eae9f7d,GPU-016209dd-9c62-0a1b-0fde-97cfb3b0c090 -v ollama:/root/.ollama -p 11434:11434 -e OLLAMA_MAX_LOADED_MODELS=6 -e OLLAMA_FLASH_ATTENTION=1 --name ollama --restart always ollama/ollama && { echo "Updated ollama container successfully!"; return 0; }
     return 1
 }
 
