@@ -1,5 +1,0 @@
-Script that loads models to Ollama runtime.
-
-The model names should be user defineable outside of the script. 
-The script should check the memory requirements for each model and load them to memory if there is enough free RAM
-All events should be logged. Script is run every minute via cron
