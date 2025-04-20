@@ -1,0 +1,13 @@
+models:
+  - name: cogvideo-artist
+    path: modelfiles/cogvideo-artist.openwebui.json
+  - name: day-deepseek-r1
+    path: modelfiles/day-deepseek-r1-32.modelfile
+  - name: day-qwen2.5
+    path: modelfiles/day-qwen2.5:32b.modelfile
+  - name: image_artist
+    path: modelfiles/image_artist.modelfile
+  - name: lunatic_leivo_model
+    path: modelfiles/lunatic_leivo_model.modelfile
+  - name: summary-mistral-small
+    path: modelfiles/summary-mistral-small.modelfile
