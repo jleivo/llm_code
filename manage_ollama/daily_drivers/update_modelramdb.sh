@@ -1,36 +1,54 @@
 #!/bin/bash
 #
 # Author: Juha Leivo
-# Version: 1.1
+# Version: 2
 # Date: 2025-04-19
 #
 # History
 #   1 - 2025-04-19, Initial write
-#   1.1 - 2025-04-19, Added file checks and creation of .ramdb if it doesn't exist
+#   2 - 2025-04-20, Added file checks and creation of .ramdb if it doesn't exist
+#                   corrected DB build logic, added logging
 
 MODELFILE='models.txt'
 MODELRAMDB='.ramdb' # Format is 'modelname ramusage', where RAM is in MB
 
+log_message() {
+    local message=$1
+    if [ -t 1 ]; then
+        echo "$message"
+    else
+        logger -t update_modelramdb.sh "$message"
+    fi
+}
+
 if [ ! -f "$MODELFILE" ]; then
-    echo "Input file '$MODELFILE' does not exist."
+    log_message "Input file '$MODELFILE' does not exist."
     exit 1
 fi
 
 if [ ! -f "$MODELRAMDB" ]; then
     touch "$MODELRAMDB"
-    echo "Created new database file: $MODELRAMDB"
+    log_message "Created new database file: $MODELRAMDB"
 fi
 
-while IFS= read -r model; do 
+while IFS= read -r model; do
+
+    RAMNEED=0
 
     if grep -q "^$model" "$MODELRAMDB"; then
-        echo "Model '$model' already exists in the database."
+        log_message "Model '$model' already exists in the database."
         continue
     fi
 
-    echo -n "$model " >> "$MODELRAMDB"
-    curl -s http://ollama.intra.leivo:11434/api/chat -d "{\"model\": \"${model}\"}" \
-    && ssh ollama.intra.leivo docker exec ollama ollama ps \
-    | grep "$model" | awk '{print $3*1000+500}' >> "$MODELRAMDB"
+    RAMNEED=$(curl -s http://ollama.intra.leivo:11434/api/chat -d "{\"model\": \"${model}\"}" > /dev/null \
+                && docker exec ollama ollama ps \
+                | grep "$model" | awk '{print $3*1000+500}')  # get the RAM usage of the model in MB
+                                                              # add 500 MB for safety margin
+
+    if [ -z "$RAMNEED" ]; then
+        log_message "failed to load model $model"
+    else
+        echo -n "$model $RAMNEED" >> "$MODELRAMDB"
+    fi
 
 done < "$MODELFILE"
