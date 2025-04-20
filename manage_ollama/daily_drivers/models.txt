@@ -1,0 +1,3 @@
+day-qwen2.5:32b
+day-deepseek-r1:32b
+qwen2.5-coder:7b-base

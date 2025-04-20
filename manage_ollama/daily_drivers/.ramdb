@@ -1,0 +1,4 @@
+day-qwen2.5:32b 24500
+day-deepseek-r1:32b 24500
+qwen2.5-coder:32b-base-q4_K_M 23500
+qwen2.5-coder:7b-base 6500
