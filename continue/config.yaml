@@ -1,0 +1,28 @@
+%YAML 1.1
+---
+name: My global config
+version: 0.0.1
+schema: v1
+
+model_defaults: &model_defaults
+    provider: ollama
+    apiBase: http://ollama.intra.leivo:11434
+
+models:
+  - name: Day Qwen 2.5
+    model: day-qwen2.5:32b
+    <<: *model_defaults
+  - name: Deep Coder 14B Preview FP16 Model
+    model: deepcoder:14b-preview-fp16
+    <<: *model_defaults
+  - name: Qwen2.5-coder
+    model: qwen2.5-coder:7b-base
+    <<: *model_defaults
+    roles:
+      - autocomplete
+    promptTemplates:
+      autocomplete: |
+        `
+        globalThis.importantFunc = importantFunc
+        <|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>
+        `
