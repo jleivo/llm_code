@@ -22,7 +22,18 @@ TEST_COMMAND="/usr/bin/nvidia-smi --query-compute-apps=pid,process_name --format
 #3336, /usr/bin/ollama
 #3602, /usr/bin/ollama
 #
+
+# Execute the command and store the output
+output=$($TEST_COMMAND)
+
+# Check if "ollama" is present in the output
+if echo "$output" | grep -q "ollama"; then
+  echo "ollama process found."
+  exit 0
+else
+  echo "ollama process not found."
+  exit 1
+fi
+
 # TODO:
 # - proper logging or printing meaningful status info to screen when interactive
-# - exit 1 if ollama not seen in the process list
-# - exit 0 if ollama is in the process list
