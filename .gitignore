@@ -1,3 +1,4 @@
 .env
 openai-env
 /portal/portal
+.venv
