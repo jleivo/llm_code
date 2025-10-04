@@ -1,0 +1,76 @@
+# Ollama Proxy
+
+A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts and routes requests based on model availability and host resources.
+
+## Features
+
+- **Host Monitoring:** Continuously monitors the availability, free VRAM, and loaded models of each configured Ollama host.
+- **Smart Routing:**
+    - For new conversations, it selects the most suitable host that has the requested model loaded and sufficient VRAM.
+    - For ongoing conversations, it ensures all subsequent requests are routed to the same host to maintain chat context (session stickiness).
+- **Transparent Proxying:** Streams requests and responses to and from the Ollama API without modification, ensuring full compatibility.
+- **Configuration via JSON:** Easily manage your Ollama hosts through a `config.json` file.
+- **Logging:** Logs host status changes and routing decisions for easy monitoring and debugging.
+
+## Setup
+
+1.  **Configuration:**
+    - Rename `config.json.example` to `config.json`.
+    - Edit `config.json` to define your Ollama hosts. Each host configuration requires:
+        - `url`: The base URL of the Ollama API (e.g., `http://192.168.1.100:11434`).
+        - `ssh_host`, `ssh_user`, `ssh_pass`: (Optional) SSH credentials for the host. These are required for the proxy to monitor the host's VRAM using `nvidia-smi`. If not provided, VRAM will not be considered for routing to this host.
+
+    **Example `config.json`:**
+    ```json
+    {
+      "hosts": [
+        {
+          "url": "http://ollama-host-1:11434",
+          "ssh_host": "ollama-host-1",
+          "ssh_user": "your_user",
+          "ssh_pass": "your_password"
+        },
+        {
+          "url": "http://ollama-host-2:11434",
+          "ssh_host": "ollama-host-2",
+          "ssh_user": "your_user",
+          "ssh_pass": "your_password"
+        }
+      ]
+    }
+    ```
+
+2.  **Install Dependencies:**
+    - Install the required Python packages using pip:
+      ```bash
+      pip install -r requirements.txt
+      ```
+
+## Running the Proxy
+
+To start the proxy server, run the `main.py` script:
+
+```bash
+python main.py
+```
+
+The proxy will start listening on `http://0.0.0.0:8080` by default.
+
+## Usage
+
+Send your Ollama API requests to the proxy server's address (e.g., `http://localhost:8080`) instead of directly to an Ollama host.
+
+### Session Stickiness (Chat Context)
+
+To ensure an ongoing conversation remains on the same host, include a unique `chat_id` in your request body. The proxy will remember which host was assigned to that `chat_id` and route all future requests with the same ID to it.
+
+**Example request body:**
+
+```json
+{
+  "model": "llama3",
+  "prompt": "Why is the sky blue?",
+  "stream": false,
+  "chat_id": "conversation-12345"
+}
+```
