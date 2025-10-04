@@ -1,0 +1,6 @@
+pytest
+pytest-asyncio
+pytest-mock
+httpx # Also needed for test client
+fastapi # Needed for test client
+uvicorn # Needed for test client

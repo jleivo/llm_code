@@ -4,8 +4,7 @@
       "url": "http://localhost:11434",
       "ssh_host": "localhost",
       "ssh_user": "user",
-      "ssh_pass": "password",
-      "models": ["llama3", "codellama"]
+      "ssh_pass": "password"
     }
   ]
 }
