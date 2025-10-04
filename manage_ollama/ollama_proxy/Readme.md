@@ -8,10 +8,11 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
 - **Smart Routing:** For new conversations, it selects the most suitable host that has the requested model loaded and sufficient VRAM.
 - **Transparent Session Stickiness:** Automatically maintains chat context without any changes to your client code.
     - **Session ID:** A unique session is identified by the combination of your IP address, the requested model, and the content of the first user message in a conversation.
-    - **Timeout:** Sessions are automatically forgotten after 15 minutes of inactivity, allowing for dynamic load balancing.
+    - **Timeout:** Sessions are automatically forgotten after 15 minutes of inactivity.
+    - **Failover:** If a host assigned to a session becomes unavailable, the proxy automatically re-routes the next request to the new best host.
 - **Transparent Proxying:** Streams requests and responses to and from the Ollama API without modification, ensuring full compatibility.
 - **Configuration via JSON:** Easily manage your Ollama hosts through a `config.json` file.
-- **Logging:** Logs host status changes, routing decisions, and session lifecycle events for easy monitoring and debugging.
+- **Logging:** Logs host status changes, routing decisions, and session lifecycle events to both the console and a `proxy.log` file.
 
 ## Setup
 
@@ -54,30 +55,9 @@ python main.py
 
 The proxy will start listening on `http://0.0.0.0:8080` by default.
 
-## Usage
-
-Send your Ollama API requests to the proxy server's address (e.g., `http://localhost:8080`) instead of directly to an Ollama host. The proxy handles the rest. Session management is completely transparent.
-
-**Example `curl` request:**
-
-```bash
-curl http://localhost:8080/api/chat -d '{
-  "model": "llama3",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Why is the sky blue?"
-    }
-  ],
-  "stream": false
-}'
-```
-
-The proxy will automatically create a session for this conversation. Subsequent requests from the same IP, for the same model, and starting with the same initial prompt will be routed to the same Ollama host until the session expires.
-
 ## Testing
 
-This project uses `pytest` for automated testing. The tests mock all external network calls (to Ollama hosts) and allow for verification of the proxy's routing and session logic in a controlled environment.
+This project uses `pytest` for automated testing. The tests mock all external network calls and verify the proxy's routing and session logic in a controlled environment.
 
 1.  **Install Development Dependencies:**
     ```bash
@@ -85,7 +65,7 @@ This project uses `pytest` for automated testing. The tests mock all external ne
     ```
 
 2.  **Run Tests:**
-    To run the full test suite, execute the following command from the root of the `ollama_proxy` directory:
+    To run the full test suite, execute the following command from the project root (`ollama-proxy` directory):
     ```bash
     pytest
     ```
