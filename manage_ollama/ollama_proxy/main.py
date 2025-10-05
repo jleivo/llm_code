@@ -109,66 +109,67 @@ async def proxy_request(request: Request, path: str):
             logger.error("Failed to parse JSON body for /api/chat.")
 
     if not host:
-        # Use the first-priority available host as a fallback
         host = host_manager.get_first_available_host()
         if not host:
             logger.error("No Ollama hosts available to handle the request.")
             raise HTTPException(status_code=503, detail="No available Ollama hosts")
 
-    async with httpx.AsyncClient() as client:
-        url = f"{host.url}/{path}"
-        headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
+    url = f"{host.url}/{path}"
+    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
 
-        if DEBUG_MODE:
-            try:
-                # Attempt to log body as JSON, fall back to raw bytes
-                log_body = json.loads(body)
-                logger.debug(f"Request to {url}: Body: {log_body}")
-            except (json.JSONDecodeError, TypeError):
-                logger.debug(f"Request to {url}: Body: {body.decode(errors='ignore')}")
-
+    if DEBUG_MODE:
         try:
-            req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+            log_body = json.loads(body)
+            logger.debug(f"Request to {url}: Body: {log_body}")
+        except (json.JSONDecodeError, TypeError):
+            logger.debug(f"Request to {url}: Body: {body.decode(errors='ignore')}")
 
-            if is_streaming:
-                downstream_response = await client.send(req, stream=True)
+    client = httpx.AsyncClient()
+    try:
+        req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
 
-                async def stream_generator():
-                    try:
-                        async for chunk in downstream_response.aiter_raw():
-                            if DEBUG_MODE:
-                                logger.debug(f"Stream chunk from {url}: {chunk.decode(errors='ignore')}")
-                            yield chunk
-                    except httpx.ReadError as e:
-                        logger.error(f"A streaming error occurred: {e}")
-                    finally:
-                        await downstream_response.aclose()
+        if is_streaming:
+            downstream_response = await client.send(req, stream=True)
+            async def stream_generator():
+                try:
+                    async for chunk in downstream_response.aiter_raw():
+                        if DEBUG_MODE:
+                            logger.debug(f"Stream chunk from {url}: {chunk.decode(errors='ignore')}")
+                        yield chunk
+                except httpx.ReadError as e:
+                    logger.error(f"A streaming error occurred: {e}")
+                finally:
+                    await downstream_response.aclose()
+                    await client.aclose()
 
-                return StreamingResponse(
-                    stream_generator(),
-                    status_code=downstream_response.status_code,
-                    headers=downstream_response.headers
-                )
-            else:
-                downstream_response = await client.send(req, stream=False)
-                response_body = await downstream_response.aread()
-                if DEBUG_MODE:
-                    try:
-                        log_body = json.loads(response_body)
-                        logger.debug(f"Response from {url}: Body: {log_body}")
-                    except (json.JSONDecodeError, TypeError):
-                        logger.debug(f"Response from {url}: Body: {response_body.decode(errors='ignore')}")
+            return StreamingResponse(
+                stream_generator(),
+                status_code=downstream_response.status_code,
+                headers=downstream_response.headers
+            )
+        else:
+            downstream_response = await client.send(req, stream=False)
+            response_body = await downstream_response.aread()
+            await client.aclose()
 
-                return Response(
-                    content=response_body,
-                    status_code=downstream_response.status_code,
-                    headers=downstream_response.headers
-                )
+            if DEBUG_MODE:
+                try:
+                    log_body = json.loads(response_body)
+                    logger.debug(f"Response from {url}: Body: {log_body}")
+                except (json.JSONDecodeError, TypeError):
+                    logger.debug(f"Response from {url}: Body: {response_body.decode(errors='ignore')}")
 
-        except httpx.RequestError as e:
-            logger.error(f"Error proxying request to {url}: {e}")
-            host.mark_as_unavailable()
-            raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
+            return Response(
+                content=response_body,
+                status_code=downstream_response.status_code,
+                headers=downstream_response.headers
+            )
+
+    except httpx.RequestError as e:
+        logger.error(f"Error proxying request to {url}: {e}")
+        host.mark_as_unavailable()
+        await client.aclose()
+        raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ollama Proxy Server")
