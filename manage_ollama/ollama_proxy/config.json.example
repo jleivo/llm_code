@@ -1,10 +1,12 @@
 {
   "hosts": [
     {
-      "url": "http://localhost:11434",
-      "ssh_host": "localhost",
-      "ssh_user": "user",
-      "ssh_pass": "password"
+      "url": "http://host1:11434",
+      "total_vram_mb": 16384
+    },
+    {
+      "url": "http://host2:11434",
+      "total_vram_mb": 8192
     }
   ]
 }
