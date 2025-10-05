@@ -30,13 +30,19 @@ class HostManager:
             logger.info("Host monitoring cycle finished.")
             time.sleep(60)
 
+    def get_primary_host(self):
+        for host in self.hosts:
+            if host.priority == 1 and host.is_available():
+                return host
+        return None
+
     def get_best_host(self, model_name):
         best_host = None
         max_free_vram = -1
 
         with self.lock:
-            available_hosts = [host for host in self.hosts if host.is_available()]
-            logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts.")
+            available_hosts = sorted([host for host in self.hosts if host.is_available()], key=lambda h: h.priority or float('inf'))
+            logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts, sorted by priority.")
 
             loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
 
@@ -64,6 +70,7 @@ class OllamaHost:
     def __init__(self, config):
         self.url = config['url']
         self.total_vram_mb = config.get('total_vram_mb', float('inf'))
+        self.priority = config.get('priority')
         self.available = False
         self.free_vram_mb = -1
         self.loaded_models = []

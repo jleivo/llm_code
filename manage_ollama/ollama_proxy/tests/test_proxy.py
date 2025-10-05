@@ -2,7 +2,7 @@ import pytest
 import asyncio
 import time
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 # Adjust path to import the main app and other modules
 import sys
@@ -140,12 +140,11 @@ async def test_proxy_routing_and_session_creation(client, mock_host_manager, moc
     host2.available = True
     host2.update_status()
 
+    # This is a non-streaming request, so it will call .aread()
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.headers = {'Content-Type': 'application/json'}
-    async def mock_aiter_raw_specific():
-        yield b'{"response": "mocked"}'
-    mock_response.aiter_raw = mock_aiter_raw_specific
+    mock_response.aread = AsyncMock(return_value=b'{"response": "mocked"}')
     mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
 
     payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Why is the sky blue?"}]}
@@ -174,7 +173,9 @@ async def test_rerouting_after_host_disappearance(client, mock_host_manager, moc
     host2.available = True
     host2.update_status()
 
-    mocker.patch('httpx.AsyncClient.send', return_value=MagicMock(status_code=200, headers={}, aiter_raw=lambda: mock_aiter_raw_content()))
+    mock_response = MagicMock(status_code=200, headers={})
+    mock_response.aread = AsyncMock(return_value=b'{"response": "mocked"}')
+    mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
 
     payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Initial prompt"}]}
 

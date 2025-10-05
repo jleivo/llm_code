@@ -4,7 +4,7 @@ import os
 import time
 import hashlib
 import threading
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import StreamingResponse
 import httpx
 from host_manager import HostManager
@@ -104,12 +104,37 @@ async def proxy_request(request: Request, path: str):
             logger.error("Failed to parse JSON body for /api/chat.")
 
     if not host:
-        available_hosts = [h for h in host_manager.hosts if h.is_available()]
-        if available_hosts:
-            host = available_hosts[0]
-        else:
-            logger.error("No Ollama hosts available to handle the request.")
-            raise HTTPException(status_code=503, detail="No available Ollama hosts")
+        host = host_manager.get_primary_host()  # Try primary first.
+        if not host:
+            logger.warning("Primary host not available, searching for any available host.")
+            # Fallback to the highest-priority available host.
+            available_hosts = sorted([h for h in host_manager.hosts if h.is_available()], key=lambda h: h.priority or float('inf'))
+            if available_hosts:
+                host = available_hosts[0]
+                logger.info(f"Routing to highest priority available host: {host.url}")
+            else:
+                logger.error("No Ollama hosts available to handle the request.")
+                raise HTTPException(status_code=503, detail="No available Ollama hosts")
+
+    # Determine if the request expects a streaming response.
+    is_streaming_request = False
+    if path == "api/chat" and request.method == "POST":
+        try:
+            body_json = json.loads(body)
+            if body_json.get("stream", False):
+                is_streaming_request = True
+        except json.JSONDecodeError:
+            pass  # Ignore if body is not valid JSON.
+
+    async def stream_generator(response):
+        try:
+            async for chunk in response.aiter_bytes():
+                yield chunk
+        except httpx.ReadError as e:
+            logger.error(f"A streaming error occurred: {e}")
+            # This is a critical point. We might need to decide if we should
+            # stop the stream or try to recover. For now, we'll just log it.
+            pass
 
     async with httpx.AsyncClient() as client:
         url = f"{host.url}/{path}"
@@ -117,7 +142,14 @@ async def proxy_request(request: Request, path: str):
         try:
             req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
             downstream_response = await client.send(req, stream=True)
-            return StreamingResponse(downstream_response.aiter_raw(), status_code=downstream_response.status_code, headers=downstream_response.headers)
+
+            if is_streaming_request:
+                return StreamingResponse(stream_generator(downstream_response), status_code=downstream_response.status_code, headers=downstream_response.headers)
+            else:
+                # For non-streaming requests, read the whole body at once.
+                response_body = await downstream_response.aread()
+                return Response(content=response_body, status_code=downstream_response.status_code, headers=downstream_response.headers)
+
         except httpx.RequestError as e:
             logger.error(f"Error proxying request to {url}: {e}")
             host.available = False
