@@ -68,11 +68,48 @@ def cleanup_expired_sessions():
                     del sessions[sid]
 
 # --- Main Application Logic ---
+async def forward_request(request: Request, host, path: str, body: bytes, is_streaming: bool):
+    """Forwards an HTTP request to a specified host and handles the response."""
+    url = f"{host.url}/{path}"
+    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
+
+    if DEBUG_MODE:
+        log_body = body.decode(errors='ignore')
+        logger.debug(f"Forwarding request to {url}: Body: {log_body[:500]}")
+
+    async with httpx.AsyncClient() as client:
+        req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+        try:
+            if is_streaming:
+                downstream_response = await client.send(req, stream=True)
+                return StreamingResponse(
+                    downstream_response.aiter_raw(),
+                    status_code=downstream_response.status_code,
+                    headers=downstream_response.headers,
+                    background=BackgroundTask(downstream_response.aclose)
+                )
+            else:
+                downstream_response = await client.send(req, stream=False)
+                response_body = await downstream_response.aread()
+                return Response(
+                    content=response_body,
+                    status_code=downstream_response.status_code,
+                    headers=downstream_response.headers
+                )
+        except httpx.RequestError as e:
+            logger.error(f"Error proxying request to {url}: {e}")
+            host.mark_as_unavailable()
+            raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
+
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def proxy_request(request: Request, path: str):
     body = await request.body()
     host = None
     is_streaming = True
+    model_name = None
+    session_id = None
+    excluded_hosts = []
 
     if path == "api/chat" and request.method == "POST":
         try:
@@ -114,65 +151,64 @@ async def proxy_request(request: Request, path: str):
             logger.error("No Ollama hosts available to handle the request.")
             raise HTTPException(status_code=503, detail="No available Ollama hosts")
 
-    url = f"{host.url}/{path}"
-    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
+    # Initial request forwarding
+    response = await forward_request(request, host, path, body, is_streaming)
 
-    if DEBUG_MODE:
-        try:
-            log_body = json.loads(body)
-            logger.debug(f"Request to {url}: Body: {log_body}")
-        except (json.JSONDecodeError, TypeError):
-            logger.debug(f"Request to {url}: Body: {body.decode(errors='ignore')}")
-
-    client = httpx.AsyncClient()
-    req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
-
-    try:
-        if is_streaming:
-            downstream_response = await client.send(req, stream=True)
-
-            async def cleanup():
-                await downstream_response.aclose()
-                await client.aclose()
-
-            async def stream_generator():
-                try:
-                    async for chunk in downstream_response.aiter_raw():
-                        if DEBUG_MODE:
-                            logger.debug(f"Stream chunk from {url}: {chunk.decode(errors='ignore')}")
-                        yield chunk
-                except httpx.ReadError as e:
-                    logger.error(f"A streaming error occurred: {e}")
-
-            return StreamingResponse(
-                stream_generator(),
-                status_code=downstream_response.status_code,
-                headers=downstream_response.headers,
-                background=BackgroundTask(cleanup)
-            )
+    # --- "Model not found" retry logic ---
+    if response.status_code == 404 and model_name:
+        response_body = b""
+        # StreamingResponse has body_iterator, regular Response has .body
+        if hasattr(response, "body_iterator"):
+            async for chunk in response.body_iterator:
+                response_body += chunk
         else:
-            downstream_response = await client.send(req, stream=False)
-            response_body = await downstream_response.aread()
-            await client.aclose()
+            response_body = getattr(response, "body", b"")
 
-            if DEBUG_MODE:
-                try:
-                    log_body = json.loads(response_body)
-                    logger.debug(f"Response from {url}: Body: {log_body}")
-                except (json.JSONDecodeError, TypeError):
-                    logger.debug(f"Response from {url}: Body: {response_body.decode(errors='ignore')}")
+        try:
+            error_details = json.loads(response_body)
+            if "model" in error_details.get("error", "") and "not found" in error_details.get("error", ""):
+                logger.warning(f"Model '{model_name}' not found on host {host.url}. Attempting to find another host.")
+                excluded_hosts.append(host.url)
 
-            return Response(
-                content=response_body,
-                status_code=downstream_response.status_code,
-                headers=downstream_response.headers
-            )
+                # Force-refresh host statuses to get the latest data
+                host_manager.refresh_all_hosts_status()
 
-    except httpx.RequestError as e:
-        logger.error(f"Error proxying request to {url}: {e}")
-        host.mark_as_unavailable()
-        await client.aclose()
-        raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
+                # Try to find a new host that has the model
+                new_host = host_manager.get_best_host(model_name, excluded_urls=excluded_hosts)
+
+                # A new host was found, but we only retry immediately if it already has the model.
+                if new_host and model_name in new_host.get_loaded_models():
+                    logger.info(f"Found alternative host {new_host.url} with model '{model_name}'. Retrying request.")
+                    if session_id:
+                        with sessions_lock:
+                            sessions[session_id] = (new_host, time.time())
+                    return await forward_request(request, new_host, path, body, is_streaming)
+
+                # If no other host has the model, we proceed to the pull logic.
+                logger.warning(f"No other host has model '{model_name}'. Attempting to pull it.")
+                # Select the best host to pull the model to (can be any host, even the original one if it's the best option)
+                host_to_pull = host_manager.get_best_host(model_name, excluded_urls=[])
+                if host_to_pull:
+                    pull_success = await host_manager.pull_model_on_host(host_to_pull, model_name)
+                    if pull_success:
+                        logger.info(f"Successfully pulled '{model_name}' to {host_to_pull.url}. Retrying request.")
+                        if session_id:
+                            with sessions_lock:
+                                sessions[session_id] = (host_to_pull, time.time())
+                        return await forward_request(request, host_to_pull, path, body, is_streaming)
+                    else:
+                        logger.error(f"Failed to pull model '{model_name}' on host {host_to_pull.url}.")
+                else:
+                    logger.error("No available host to pull the model to.")
+
+                # If all else fails, return the original 404 error.
+                logger.error(f"Exhausted all options for model '{model_name}'. Returning 404.")
+                return Response(content=response_body, status_code=404, headers=response.headers)
+        except (json.JSONDecodeError, AttributeError):
+            # Not the JSON error we were looking for, return the original response
+            pass
+
+    return response
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ollama Proxy Server")
@@ -194,6 +230,7 @@ if __name__ == "__main__":
         logger.error(f"Configuration file not found at {config_path}. Please create it from the example.")
     else:
         host_manager = HostManager(config_path)
+        host_manager.start_monitoring()  # Start the host monitor
         cleanup_thread = threading.Thread(target=cleanup_expired_sessions, daemon=True)
         cleanup_thread.start()
 

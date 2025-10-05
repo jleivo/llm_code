@@ -4,6 +4,7 @@ import threading
 import time
 import requests
 import os
+import httpx
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,6 +16,10 @@ class HostManager:
         self.load_config()
         self.lock = threading.Lock()
         self.monitor_thread = threading.Thread(target=self.monitor_hosts, daemon=True)
+
+    def start_monitoring(self):
+        """Starts the background host monitoring thread."""
+        logger.info("Starting background host monitor.")
         self.monitor_thread.start()
 
     def load_config(self):
@@ -36,35 +41,105 @@ class HostManager:
                 return host
         return None
 
-    def get_best_host(self, model_name):
-        best_host = None
-        max_free_vram = -1
+    def refresh_all_hosts_status(self):
+        """Forces an immediate refresh of all hosts' status, models, and VRAM."""
+        logger.info("Forcing immediate refresh of all host statuses.")
+        threads = []
+        for host in self.hosts:
+            thread = threading.Thread(target=host.update_status)
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
+        logger.info("Finished refreshing all host statuses.")
+
+    def get_best_host(self, model_name, excluded_urls=None):
+        """
+        Finds the best host for a given model, optionally excluding some hosts.
+        The logic is as follows:
+        1. Prioritize hosts that already have the model loaded, respecting their priority order.
+        2. If no host has the model loaded, select the host with the most free VRAM.
+        """
+        if excluded_urls is None:
+            excluded_urls = []
 
         with self.lock:
-            available_hosts = sorted([host for host in self.hosts if host.is_available()], key=lambda h: h.priority or float('inf'))
-            logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts, sorted by priority.")
+            available_hosts = sorted(
+                [h for h in self.hosts if h.is_available() and h.url not in excluded_urls],
+                key=lambda h: h.priority or float('inf')
+            )
+            logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts (excluding {len(excluded_urls)}).")
 
+            # First, check for hosts that have the model loaded, respecting priority.
             loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
-
             if loaded_hosts:
-                logger.info(f"Found hosts with '{model_name}' already loaded: {[h.url for h in loaded_hosts]}")
-                target_hosts = loaded_hosts
-            else:
-                logger.info(f"No hosts have '{model_name}' loaded. Considering all available hosts.")
-                target_hosts = available_hosts
+                best_host = loaded_hosts[0]  # The list is already sorted by priority.
+                logger.info(f"Found host with '{model_name}' loaded: {best_host.url} (Priority: {best_host.priority})")
+                return best_host
 
-            for host in target_hosts:
+            # If no host has the model, find the one with the most free VRAM.
+            logger.info(f"No hosts have '{model_name}' loaded. Selecting host with most free VRAM.")
+            best_host_by_vram = None
+            max_free_vram = -1
+            for host in available_hosts:
                 free_vram = host.get_free_vram()
                 if free_vram > max_free_vram:
                     max_free_vram = free_vram
-                    best_host = host
+                    best_host_by_vram = host
 
-        if best_host:
-            logger.info(f"Selected best host for '{model_name}': {best_host.url} with {max_free_vram}MB free VRAM.")
-        else:
-            logger.warning(f"No suitable host found for model '{model_name}'.")
+            if best_host_by_vram:
+                logger.info(f"Selected best host for '{model_name}': {best_host_by_vram.url} with {max_free_vram:.2f}MB free VRAM.")
+                return best_host_by_vram
 
-        return best_host
+        logger.warning(f"No suitable host found for model '{model_name}'.")
+        return None
+
+    async def pull_model_on_host(self, host, model_name):
+        """
+        Pulls a model to a specified host using the /api/pull endpoint.
+        Streams the response and logs the progress. Returns True on success, False on failure.
+        """
+        url = f"{host.url}/api/pull"
+        payload = {"name": model_name, "stream": True}
+        logger.info(f"Attempting to pull model '{model_name}' on host {host.url}...")
+
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", url, json=payload) as response:
+                    if response.status_code != 200:
+                        response_body = await response.aread()
+                        logger.error(f"Failed to initiate model pull for '{model_name}' on {host.url}. Status: {response.status_code}, Body: {response_body.decode()}")
+                        return False
+
+                    async for chunk in response.aiter_bytes():
+                        try:
+                            lines = chunk.decode('utf-8').splitlines()
+                            for line in lines:
+                                if not line:
+                                    continue
+                                data = json.loads(line)
+                                if 'status' in data:
+                                    status = data['status']
+                                    progress = ""
+                                    if 'total' in data and 'completed' in data and data['total'] > 0:
+                                        progress = f"({(data['completed'] / data['total']) * 100:.2f}%)"
+                                    logger.info(f"Pulling '{model_name}' on {host.url}: {status} {progress}")
+                                if 'error' in data:
+                                    logger.error(f"Error pulling model '{model_name}' on {host.url}: {data['error']}")
+                                    return False
+                        except json.JSONDecodeError:
+                            logger.warning(f"Could not decode JSON from pull stream chunk: {chunk}")
+
+            logger.info(f"Successfully pulled model '{model_name}' to host {host.url}.")
+            host.update_status()  # Refresh host status to reflect new model and VRAM usage.
+            return True
+
+        except httpx.RequestError as e:
+            logger.error(f"Request error while trying to pull model on {host.url}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during model pull on {host.url}: {e}")
+            return False
 
     def get_first_available_host(self):
         with self.lock:

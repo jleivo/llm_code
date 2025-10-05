@@ -2,6 +2,7 @@ import pytest
 import asyncio
 import time
 from fastapi.testclient import TestClient
+from fastapi.responses import Response
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Adjust path to import the main app and other modules
@@ -25,14 +26,13 @@ def mock_host_manager(mocker):
     """
     Provides a mocked HostManager instance and patches it into the main module.
     """
-    mocker.patch('threading.Thread.start')
+    # No longer need to patch threading since the monitor isn't auto-started.
     mocker.patch.object(HostManager, 'load_config', return_value=None)
-
     mock_hm = HostManager('dummy_config.json')
 
     # Define mock hosts with total VRAM
-    host1 = OllamaHost({'url': 'http://host1:11434', 'total_vram_mb': 8192})
-    host2 = OllamaHost({'url': 'http://host2:11434', 'total_vram_mb': 16384})
+    host1 = OllamaHost({'url': 'http://host1:11434', 'total_vram_mb': 8192, 'priority': 2})
+    host2 = OllamaHost({'url': 'http://host2:11434', 'total_vram_mb': 16384, 'priority': 1})
     mock_hm.hosts = [host1, host2]
 
     mocker.patch.object(main, 'host_manager', mock_hm)
@@ -236,14 +236,103 @@ async def test_proxy_non_streaming_chat(client, mock_host_manager, mocker):
     host.available = True
     host.update_status()
 
-    mock_response = AsyncMock()
-    mock_response.status_code = 200
-    mock_response.headers = {'Content-Type': 'application/json'}
-    mock_response.aread = AsyncMock(return_value=b'{"response": "non-streaming"}')
-    mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
+    mock_response = Response(
+        content=b'{"response": "non-streaming"}',
+        status_code=200,
+        headers={'Content-Type': 'application/json'}
+    )
+    mocker.patch('main.forward_request', new=AsyncMock(return_value=mock_response))
 
     payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Non-stream test"}], "stream": False}
     response = client.post("/api/chat", json=payload)
 
     assert response.status_code == 200
     assert response.json() == {"response": "non-streaming"}
+
+@pytest.mark.asyncio
+async def test_model_not_found_triggers_retry_to_alternative_host(client, mock_host_manager, mocker, caplog):
+    """
+    Tests that a 404 'model not found' error triggers a retry to a second host
+    that is discovered to have the model after a status refresh.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available, host2.available = True, True
+    host1.loaded_models, host2.loaded_models = [], []
+
+    # First, get_best_host is called and returns host2 (P1).
+    # After the 404, it's called again and returns host1 (the only other option).
+    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1])
+    # The refresh should "reveal" that host1 now has the model.
+    def refresh_side_effect():
+        host1.loaded_models = ['the-model']
+    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status', side_effect=refresh_side_effect)
+
+    mock_404_response = Response(content=b'{"error": "model \'the-model\' not found"}', status_code=404)
+    mock_200_response = Response(content=b'{"response": "success"}', status_code=200)
+    mocker.patch('main.forward_request', new_callable=AsyncMock, side_effect=[mock_404_response, mock_200_response])
+
+    payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}
+    response = client.post("/api/chat", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {"response": "success"}
+    assert f"Model 'the-model' not found on host {host2.url}" in caplog.text
+    assert f"Found alternative host {host1.url} with model 'the-model'. Retrying request." in caplog.text
+    assert main.forward_request.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_model_not_found_triggers_pull_if_no_alternative(client, mock_host_manager, mocker, caplog):
+    """
+    Tests that if no other host has the model after a refresh, the proxy attempts to pull it.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available, host2.available = True, True
+    host1.loaded_models, host2.loaded_models = [], []
+
+    # 1. Initial call returns host2.
+    # 2. Call after 404 returns host1 (the only one not excluded).
+    # 3. host1 doesn't have the model, so we enter pull logic. A final call selects the best host for pulling (host2).
+    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1, host2])
+    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
+
+    mock_404_response = Response(content=b'{"error": "model \'the-model\' not found"}', status_code=404)
+    mock_200_response = Response(content=b'{"response": "success from pull"}', status_code=200)
+    mocker.patch('main.forward_request', new_callable=AsyncMock, side_effect=[mock_404_response, mock_200_response])
+
+    mocker.patch.object(mock_host_manager, 'pull_model_on_host', new_callable=AsyncMock, return_value=True)
+
+    payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}
+    response = client.post("/api/chat", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {"response": "success from pull"}
+    assert f"No other host has model 'the-model'. Attempting to pull it." in caplog.text
+    mock_host_manager.pull_model_on_host.assert_called_once_with(host2, 'the-model')
+
+
+@pytest.mark.asyncio
+async def test_model_pull_failure_returns_original_404(client, mock_host_manager, mocker, caplog):
+    """
+    Tests that if the model pull fails, the original 404 response is returned.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available, host2.available = True, True
+    host1.loaded_models, host2.loaded_models = [], []
+
+    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1, host2])
+    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
+
+    original_404_content = b'{"error": "model \'the-model\' not found"}'
+    mock_404_response = Response(content=original_404_content, status_code=404)
+    mocker.patch('main.forward_request', new_callable=AsyncMock, return_value=mock_404_response)
+
+    mocker.patch.object(mock_host_manager, 'pull_model_on_host', new_callable=AsyncMock, return_value=False)
+
+    payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}
+    response = client.post("/api/chat", json=payload)
+
+    assert response.status_code == 404
+    assert response.content == original_404_content
+    assert f"Failed to pull model 'the-model' on host {host2.url}" in caplog.text
+    assert main.forward_request.call_count == 1
