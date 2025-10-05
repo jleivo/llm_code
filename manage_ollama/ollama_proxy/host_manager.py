@@ -66,6 +66,13 @@ class HostManager:
 
         return best_host
 
+    def get_first_available_host(self):
+        with self.lock:
+            for host in self.hosts:
+                if host.is_available():
+                    return host
+        return None
+
 class OllamaHost:
     def __init__(self, config):
         self.url = config['url']
@@ -132,3 +139,8 @@ class OllamaHost:
 
     def get_loaded_models(self):
         return self.loaded_models
+
+    def mark_as_unavailable(self):
+        if self.available:
+            logger.warning(f"Host {self.url} marked as unavailable due to request error.")
+        self.available = False

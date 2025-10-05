@@ -140,11 +140,13 @@ async def test_proxy_routing_and_session_creation(client, mock_host_manager, moc
     host2.available = True
     host2.update_status()
 
-    # This is a non-streaming request, so it will call .aread()
-    mock_response = MagicMock()
+    mock_response = AsyncMock()
     mock_response.status_code = 200
     mock_response.headers = {'Content-Type': 'application/json'}
-    mock_response.aread = AsyncMock(return_value=b'{"response": "mocked"}')
+    async def mock_aiter_raw_specific():
+        yield b'{"response": "mocked"}'
+    mock_response.aiter_raw = mock_aiter_raw_specific
+    mock_response.aclose = AsyncMock()
     mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
 
     payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Why is the sky blue?"}]}
@@ -173,9 +175,12 @@ async def test_rerouting_after_host_disappearance(client, mock_host_manager, moc
     host2.available = True
     host2.update_status()
 
-    mock_response = MagicMock(status_code=200, headers={})
-    mock_response.aread = AsyncMock(return_value=b'{"response": "mocked"}')
-    mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
+    mocker.patch('httpx.AsyncClient.send', return_value=AsyncMock(
+        status_code=200,
+        headers={},
+        aiter_raw=lambda: mock_aiter_raw_content(),
+        aclose=AsyncMock()
+    ))
 
     payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Initial prompt"}]}
 
@@ -194,3 +199,51 @@ async def test_rerouting_after_host_disappearance(client, mock_host_manager, moc
     found_reassigned_log = any(f"Assigned new host {host2.url} to session." in record.message for record in caplog.records)
     assert found_unavailable_log, "Log for unavailable session host not found."
     assert found_reassigned_log, "Did not re-route to the next best host."
+
+@pytest.mark.asyncio
+async def test_proxy_streaming_chat(client, mock_host_manager, mocker):
+    """
+    Tests that a streaming chat request is handled correctly.
+    """
+    mocker.patch('requests.get', return_value=MockResponse({"models":[]}))
+    host = mock_host_manager.hosts[0]
+    host.available = True
+    host.update_status()
+
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.headers = {'Content-Type': 'application/json'}
+    async def mock_aiter_raw_specific():
+        yield b'{"response": "streaming"}'
+    mock_response.aiter_raw = mock_aiter_raw_specific
+    mock_response.aclose = AsyncMock()
+    mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
+
+    payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Stream test"}], "stream": True}
+    response = client.post("/api/chat", json=payload)
+
+    assert response.status_code == 200
+    assert response.text == '{"response": "streaming"}'
+
+
+@pytest.mark.asyncio
+async def test_proxy_non_streaming_chat(client, mock_host_manager, mocker):
+    """
+    Tests that a non-streaming chat request is handled correctly.
+    """
+    mocker.patch('requests.get', return_value=MockResponse({"models":[]}))
+    host = mock_host_manager.hosts[0]
+    host.available = True
+    host.update_status()
+
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.headers = {'Content-Type': 'application/json'}
+    mock_response.aread = AsyncMock(return_value=b'{"response": "non-streaming"}')
+    mocker.patch('httpx.AsyncClient.send', return_value=mock_response)
+
+    payload = {"model": "llama3:latest", "messages": [{"role": "user", "content": "Non-stream test"}], "stream": False}
+    response = client.post("/api/chat", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {"response": "non-streaming"}

@@ -4,8 +4,10 @@ import os
 import time
 import hashlib
 import threading
-from fastapi import FastAPI, Request, HTTPException, Response
-from fastapi.responses import StreamingResponse
+import argparse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse, Response
+from starlette.background import BackgroundTask
 import httpx
 from host_manager import HostManager
 
@@ -14,17 +16,16 @@ from host_manager import HostManager
 script_dir = os.path.dirname(__file__)
 log_file_path = os.path.join(script_dir, 'proxy.log')
 root_logger = logging.getLogger()
+# Default to INFO, can be overridden by command-line arg.
 root_logger.setLevel(logging.INFO)
 if not root_logger.handlers:
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # Console handler
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
     # File handler
     file_handler = logging.FileHandler(log_file_path, mode='a')
-    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 logger = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ app = FastAPI()
 host_manager: HostManager = None
 sessions = {}
 sessions_lock = threading.Lock()
+# Will be set from command-line arguments.
+DEBUG_MODE = False
 
 # --- Helper Functions ---
 def get_first_user_message(messages):
@@ -69,6 +72,7 @@ def cleanup_expired_sessions():
 async def proxy_request(request: Request, path: str):
     body = await request.body()
     host = None
+    is_streaming = True
 
     if path == "api/chat" and request.method == "POST":
         try:
@@ -76,6 +80,7 @@ async def proxy_request(request: Request, path: str):
             model_name = body_json.get("model")
             messages = body_json.get("messages")
             first_prompt = get_first_user_message(messages)
+            is_streaming = body_json.get("stream", True)
 
             if model_name and first_prompt:
                 session_id = generate_session_id(request, model_name, first_prompt)
@@ -104,58 +109,87 @@ async def proxy_request(request: Request, path: str):
             logger.error("Failed to parse JSON body for /api/chat.")
 
     if not host:
-        host = host_manager.get_primary_host()  # Try primary first.
+        host = host_manager.get_first_available_host()
         if not host:
-            logger.warning("Primary host not available, searching for any available host.")
-            # Fallback to the highest-priority available host.
-            available_hosts = sorted([h for h in host_manager.hosts if h.is_available()], key=lambda h: h.priority or float('inf'))
-            if available_hosts:
-                host = available_hosts[0]
-                logger.info(f"Routing to highest priority available host: {host.url}")
-            else:
-                logger.error("No Ollama hosts available to handle the request.")
-                raise HTTPException(status_code=503, detail="No available Ollama hosts")
+            logger.error("No Ollama hosts available to handle the request.")
+            raise HTTPException(status_code=503, detail="No available Ollama hosts")
 
-    # Determine if the request expects a streaming response.
-    is_streaming_request = False
-    if path == "api/chat" and request.method == "POST":
-        try:
-            body_json = json.loads(body)
-            if body_json.get("stream", False):
-                is_streaming_request = True
-        except json.JSONDecodeError:
-            pass  # Ignore if body is not valid JSON.
+    url = f"{host.url}/{path}"
+    headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
 
-    async def stream_generator(response):
+    if DEBUG_MODE:
         try:
-            async for chunk in response.aiter_bytes():
-                yield chunk
-        except httpx.ReadError as e:
-            logger.error(f"A streaming error occurred: {e}")
-            # This is a critical point. We might need to decide if we should
-            # stop the stream or try to recover. For now, we'll just log it.
-            pass
+            log_body = json.loads(body)
+            logger.debug(f"Request to {url}: Body: {log_body}")
+        except (json.JSONDecodeError, TypeError):
+            logger.debug(f"Request to {url}: Body: {body.decode(errors='ignore')}")
 
-    async with httpx.AsyncClient() as client:
-        url = f"{host.url}/{path}"
-        headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
-        try:
-            req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+    client = httpx.AsyncClient()
+    req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+
+    try:
+        if is_streaming:
             downstream_response = await client.send(req, stream=True)
 
-            if is_streaming_request:
-                return StreamingResponse(stream_generator(downstream_response), status_code=downstream_response.status_code, headers=downstream_response.headers)
-            else:
-                # For non-streaming requests, read the whole body at once.
-                response_body = await downstream_response.aread()
-                return Response(content=response_body, status_code=downstream_response.status_code, headers=downstream_response.headers)
+            async def cleanup():
+                await downstream_response.aclose()
+                await client.aclose()
 
-        except httpx.RequestError as e:
-            logger.error(f"Error proxying request to {url}: {e}")
-            host.available = False
-            raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
+            async def stream_generator():
+                try:
+                    async for chunk in downstream_response.aiter_raw():
+                        if DEBUG_MODE:
+                            logger.debug(f"Stream chunk from {url}: {chunk.decode(errors='ignore')}")
+                        yield chunk
+                except httpx.ReadError as e:
+                    logger.error(f"A streaming error occurred: {e}")
+
+            return StreamingResponse(
+                stream_generator(),
+                status_code=downstream_response.status_code,
+                headers=downstream_response.headers,
+                background=BackgroundTask(cleanup)
+            )
+        else:
+            downstream_response = await client.send(req, stream=False)
+            response_body = await downstream_response.aread()
+            await client.aclose()
+
+            if DEBUG_MODE:
+                try:
+                    log_body = json.loads(response_body)
+                    logger.debug(f"Response from {url}: Body: {log_body}")
+                except (json.JSONDecodeError, TypeError):
+                    logger.debug(f"Response from {url}: Body: {response_body.decode(errors='ignore')}")
+
+            return Response(
+                content=response_body,
+                status_code=downstream_response.status_code,
+                headers=downstream_response.headers
+            )
+
+    except httpx.RequestError as e:
+        logger.error(f"Error proxying request to {url}: {e}")
+        host.mark_as_unavailable()
+        await client.aclose()
+        raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Ollama Proxy Server")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode for verbose logging.")
+    args = parser.parse_args()
+
+    DEBUG_MODE = args.debug
+    if DEBUG_MODE:
+        # Set all handlers to DEBUG level
+        for handler in root_logger.handlers:
+            handler.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger("httpx").setLevel(logging.DEBUG)
+        logger.info("Debug mode enabled.")
+
+
     if not os.path.exists(config_path):
         logger.error(f"Configuration file not found at {config_path}. Please create it from the example.")
     else:
