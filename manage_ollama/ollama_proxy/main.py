@@ -7,6 +7,7 @@ import threading
 import argparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, Response
+from starlette.background import BackgroundTask
 import httpx
 from host_manager import HostManager
 
@@ -79,7 +80,6 @@ async def proxy_request(request: Request, path: str):
             model_name = body_json.get("model")
             messages = body_json.get("messages")
             first_prompt = get_first_user_message(messages)
-            # Default to True if not specified
             is_streaming = body_json.get("stream", True)
 
             if model_name and first_prompt:
@@ -125,11 +125,16 @@ async def proxy_request(request: Request, path: str):
             logger.debug(f"Request to {url}: Body: {body.decode(errors='ignore')}")
 
     client = httpx.AsyncClient()
-    try:
-        req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+    req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
 
+    try:
         if is_streaming:
             downstream_response = await client.send(req, stream=True)
+
+            async def cleanup():
+                await downstream_response.aclose()
+                await client.aclose()
+
             async def stream_generator():
                 try:
                     async for chunk in downstream_response.aiter_raw():
@@ -138,14 +143,12 @@ async def proxy_request(request: Request, path: str):
                         yield chunk
                 except httpx.ReadError as e:
                     logger.error(f"A streaming error occurred: {e}")
-                finally:
-                    await downstream_response.aclose()
-                    await client.aclose()
 
             return StreamingResponse(
                 stream_generator(),
                 status_code=downstream_response.status_code,
-                headers=downstream_response.headers
+                headers=downstream_response.headers,
+                background=BackgroundTask(cleanup)
             )
         else:
             downstream_response = await client.send(req, stream=False)
