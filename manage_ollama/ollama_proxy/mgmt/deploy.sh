@@ -77,6 +77,7 @@ function init() {
   local program_fail=0
 
   # check if we have the programs
+  # shellcheck disable=SC2043
   for program in scp; do
     if ! hash "${program}" 2>/dev/null; then
       log "ERROR: command not found in PATH: %s\n ${program}"

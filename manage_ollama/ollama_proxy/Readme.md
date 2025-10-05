@@ -20,7 +20,7 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
     - Rename `config.json.example` to `config.json`.
     - Edit `config.json` to define your Ollama hosts. Each host configuration requires:
         - `url`: The base URL of the Ollama API (e.g., `http://192.168.1.100:11434`).
-        - `ssh_host`, `ssh_user`, `ssh_pass`: (Optional) SSH credentials for the host. These are required for the proxy to monitor the host's VRAM using `nvidia-smi`. If not provided, VRAM will not be a factor in routing decisions for this host.
+        - `total_vram_mb`: This is the amount of VRAM available on the host in MiB.
 
     **Example `config.json`:**
     ```json
@@ -28,14 +28,12 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
       "hosts": [
         {
           "url": "http://ollama-host-1:11434",
-          "ssh_host": "ollama-host-1",
-          "ssh_user": "your_user",
-          "ssh_pass": "your_password"
+          "total_vram_mb": 16384
         },
         {
-          "url": "http://ollama-host-2:11434"
+          "url": "http://host2:11434",
+          "total_vram_mb": 8192
         }
-      ]
     }
     ```
 
