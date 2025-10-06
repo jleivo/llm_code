@@ -57,8 +57,9 @@ class HostManager:
         """
         Finds the best host for a given model, optionally excluding some hosts.
         The logic is as follows:
-        1. Prioritize hosts that already have the model loaded, respecting their priority order.
-        2. If no host has the model loaded, select the host with the most free VRAM.
+        1. Prioritize hosts that already have the model loaded in VRAM, respecting priority.
+        2. Second, prioritize hosts that have the model on disk (but not loaded), respecting priority.
+        3. If no host has the model, select the available host with the most free VRAM to pull to.
         """
         if excluded_urls is None:
             excluded_urls = []
@@ -70,15 +71,22 @@ class HostManager:
             )
             logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts (excluding {len(excluded_urls)}).")
 
-            # First, check for hosts that have the model loaded, respecting priority.
+            # 1. Prioritize hosts with the model already loaded in VRAM.
             loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
             if loaded_hosts:
-                best_host = loaded_hosts[0]  # The list is already sorted by priority.
-                logger.info(f"Found host with '{model_name}' loaded: {best_host.url} (Priority: {best_host.priority})")
+                best_host = loaded_hosts[0]  # List is already sorted by priority.
+                logger.info(f"Found host with '{model_name}' loaded in VRAM: {best_host.url} (Priority: {best_host.priority})")
                 return best_host
 
-            # If no host has the model, find the one with the most free VRAM.
-            logger.info(f"No hosts have '{model_name}' loaded. Selecting host with most free VRAM.")
+            # 2. Prioritize hosts with the model on disk (but not loaded).
+            local_hosts = [host for host in available_hosts if model_name in host.get_local_models()]
+            if local_hosts:
+                best_host = local_hosts[0] # List is already sorted by priority.
+                logger.info(f"Found host with '{model_name}' available locally on disk: {best_host.url} (Priority: {best_host.priority})")
+                return best_host
+
+            # 3. If no host has the model, find the one with the most free VRAM for pulling.
+            logger.info(f"No hosts have '{model_name}' available. Selecting host with most free VRAM to pull the model.")
             best_host_by_vram = None
             max_free_vram = -1
             for host in available_hosts:
@@ -88,7 +96,7 @@ class HostManager:
                     best_host_by_vram = host
 
             if best_host_by_vram:
-                logger.info(f"Selected best host for '{model_name}': {best_host_by_vram.url} with {max_free_vram:.2f}MB free VRAM.")
+                logger.info(f"Selected best host for pulling '{model_name}': {best_host_by_vram.url} with {max_free_vram:.2f}MB free VRAM.")
                 return best_host_by_vram
 
         logger.warning(f"No suitable host found for model '{model_name}'.")
@@ -156,11 +164,13 @@ class OllamaHost:
         self.available = False
         self.free_vram_mb = -1
         self.loaded_models = []
+        self.local_models = []
 
     def update_status(self):
         if not self.check_availability():
             self.free_vram_mb = -1
             self.loaded_models = []
+            self.local_models = []
             return
         self.update_models_and_vram_from_api()
 
@@ -182,15 +192,15 @@ class OllamaHost:
         return self.available
 
     def update_models_and_vram_from_api(self):
+        # First, update loaded models and VRAM from /api/ps
         try:
             response = requests.get(f"{self.url}/api/ps", timeout=5)
             response.raise_for_status()
             models_data = response.json().get('models', [])
 
             self.loaded_models = [model['name'] for model in models_data]
-            logger.info(f"Host {self.url} has loaded models: {self.loaded_models}")
+            logger.info(f"Host {self.url} has loaded models (in VRAM): {self.loaded_models}")
 
-            # **CRITICAL FIX:** Use 'size_vram' for VRAM calculation, not 'size'.
             used_vram_bytes = sum(model.get('size_vram', 0) for model in models_data)
             used_vram_mb = used_vram_bytes / (1024 * 1024)
 
@@ -202,9 +212,20 @@ class OllamaHost:
             logger.info(f"Host {self.url} has {self.free_vram_mb:.2f}MB free VRAM ({used_vram_mb:.2f}MB used).")
 
         except requests.RequestException as e:
-            logger.error(f"Error getting model/VRAM data for host {self.url}: {e}")
+            logger.error(f"Error getting loaded model/VRAM data for host {self.url}: {e}")
             self.loaded_models = []
             self.free_vram_mb = -1
+
+        # Second, update the list of all local models from /api/tags
+        try:
+            response = requests.get(f"{self.url}/api/tags", timeout=5)
+            response.raise_for_status()
+            models_data = response.json().get('models', [])
+            self.local_models = [model['name'] for model in models_data]
+            logger.info(f"Host {self.url} has local models (on disk): {self.local_models}")
+        except requests.RequestException as e:
+            logger.error(f"Error getting local model list for host {self.url}: {e}")
+            self.local_models = []
 
     def is_available(self):
         return self.available
@@ -214,6 +235,9 @@ class OllamaHost:
 
     def get_loaded_models(self):
         return self.loaded_models
+
+    def get_local_models(self):
+        return self.local_models
 
     def mark_as_unavailable(self):
         if self.available:

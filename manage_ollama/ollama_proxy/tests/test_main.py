@@ -126,7 +126,7 @@ def test_best_host_selection_chooses_max_vram(mock_host_manager, mocker, caplog)
     best_host = mock_host_manager.get_best_host('codellama:latest')
 
     assert best_host is host2
-    assert f"Selected best host for 'codellama:latest': {host2.url}" in caplog.text
+    assert f"Selected best host for pulling 'codellama:latest': {host2.url}" in caplog.text
 
 @pytest.mark.asyncio
 async def test_proxy_routing_and_session_creation(client, mock_host_manager, mocker, caplog):
@@ -250,56 +250,40 @@ async def test_proxy_non_streaming_chat(client, mock_host_manager, mocker):
     assert response.json() == {"response": "non-streaming"}
 
 @pytest.mark.asyncio
-async def test_model_not_found_triggers_retry_to_alternative_host(client, mock_host_manager, mocker, caplog):
+async def test_host_with_local_model_is_chosen(client, mock_host_manager, mocker, caplog):
     """
-    Tests that a 404 'model not found' error triggers a retry to a second host
-    that is discovered to have the model after a status refresh.
+    Tests that a host with a model locally on disk is chosen over a host with more VRAM.
     """
     host1, host2 = mock_host_manager.hosts
     host1.available, host2.available = True, True
-    host1.loaded_models, host2.loaded_models = [], []
+    host1.free_vram_mb, host2.free_vram_mb = 4000, 8000 # host2 has more VRAM
+    host1.local_models = ['the-model'] # but host1 has the model locally
+    host2.local_models = []
 
-    # First, get_best_host is called and returns host2 (P1).
-    # After the 404, it's called again and returns host1 (the only other option).
-    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1])
-    # The refresh should "reveal" that host1 now has the model.
-    def refresh_side_effect():
-        host1.loaded_models = ['the-model']
-    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status', side_effect=refresh_side_effect)
-
-    mock_404_response = Response(content=b'{"error": "model \'the-model\' not found"}', status_code=404)
-    mock_200_response = Response(content=b'{"response": "success"}', status_code=200)
-    mocker.patch('main.forward_request', new_callable=AsyncMock, side_effect=[mock_404_response, mock_200_response])
+    mocker.patch('main.forward_request', new_callable=AsyncMock, return_value=Response(b"OK", 200))
 
     payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}
-    response = client.post("/api/chat", json=payload)
+    client.post("/api/chat", json=payload)
 
-    assert response.status_code == 200
-    assert response.json() == {"response": "success"}
-    assert f"Model 'the-model' not found on host {host2.url}" in caplog.text
-    assert f"Found alternative host {host1.url} with model 'the-model'. Retrying request." in caplog.text
-    assert main.forward_request.call_count == 2
-
+    assert f"Found host with 'the-model' available locally on disk: {host1.url}" in caplog.text
+    main.forward_request.assert_called_once()
+    assert main.forward_request.call_args.args[1] == host1
 
 @pytest.mark.asyncio
 async def test_model_not_found_triggers_pull_if_no_alternative(client, mock_host_manager, mocker, caplog):
     """
-    Tests that if no other host has the model after a refresh, the proxy attempts to pull it.
+    Tests that if no host has the model locally or loaded, the proxy attempts to pull it.
     """
     host1, host2 = mock_host_manager.hosts
     host1.available, host2.available = True, True
     host1.loaded_models, host2.loaded_models = [], []
-
-    # 1. Initial call returns host2.
-    # 2. Call after 404 returns host1 (the only one not excluded).
-    # 3. host1 doesn't have the model, so we enter pull logic. A final call selects the best host for pulling (host2).
-    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1, host2])
-    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
+    host1.local_models, host2.local_models = [], []
+    host1.free_vram_mb, host2.free_vram_mb = 4000, 8000
 
     mock_404_response = Response(content=b'{"error": "model \'the-model\' not found"}', status_code=404)
     mock_200_response = Response(content=b'{"response": "success from pull"}', status_code=200)
     mocker.patch('main.forward_request', new_callable=AsyncMock, side_effect=[mock_404_response, mock_200_response])
-
+    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
     mocker.patch.object(mock_host_manager, 'pull_model_on_host', new_callable=AsyncMock, return_value=True)
 
     payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}
@@ -307,8 +291,9 @@ async def test_model_not_found_triggers_pull_if_no_alternative(client, mock_host
 
     assert response.status_code == 200
     assert response.json() == {"response": "success from pull"}
-    assert f"No other host has model 'the-model'. Attempting to pull it." in caplog.text
+    assert f"No hosts have 'the-model' available. Selecting host with most free VRAM to pull the model." in caplog.text
     mock_host_manager.pull_model_on_host.assert_called_once_with(host2, 'the-model')
+    assert main.forward_request.call_args_list[1].args[1] == host2
 
 
 @pytest.mark.asyncio
@@ -319,14 +304,14 @@ async def test_model_pull_failure_returns_original_404(client, mock_host_manager
     host1, host2 = mock_host_manager.hosts
     host1.available, host2.available = True, True
     host1.loaded_models, host2.loaded_models = [], []
-
-    mocker.patch.object(mock_host_manager, 'get_best_host', side_effect=[host2, host1, host2])
-    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
+    host1.local_models, host2.local_models = [], []
+    host1.free_vram_mb, host2.free_vram_mb = 4000, 8000
 
     original_404_content = b'{"error": "model \'the-model\' not found"}'
     mock_404_response = Response(content=original_404_content, status_code=404)
     mocker.patch('main.forward_request', new_callable=AsyncMock, return_value=mock_404_response)
 
+    mocker.patch.object(mock_host_manager, 'refresh_all_hosts_status')
     mocker.patch.object(mock_host_manager, 'pull_model_on_host', new_callable=AsyncMock, return_value=False)
 
     payload = {"model": "the-model", "messages": [{"role": "user", "content": "Test"}]}

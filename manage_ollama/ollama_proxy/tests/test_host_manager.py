@@ -40,15 +40,30 @@ def mock_host_manager_for_logic(mocker):
 
 # --- Test Cases for HostManager ---
 
-def test_get_best_host_prefers_loaded_model_over_vram(mock_host_manager_for_logic):
+def test_get_best_host_prefers_loaded_model_over_local(mock_host_manager_for_logic):
     """
-    Tests that get_best_host selects the host with the model loaded, even if it has less VRAM
-    and a worse priority than another host.
+    Tests that a host with the model loaded in VRAM is preferred over one
+    where the model is only available locally on disk, even if the local one has better priority.
     """
-    hm, _ = mock_host_manager_for_logic
-    # Requesting 'model-b', which is only on the P2 host with low VRAM.
-    best_host = hm.get_best_host('model-b')
+    hm, (host1, host2, host3) = mock_host_manager_for_logic
+    host1.loaded_models = []
+    host1.local_models = ['the-model'] # P1 has it on disk
+    host2.loaded_models = ['the-model'] # P2 has it in VRAM
+
+    best_host = hm.get_best_host('the-model')
     assert best_host.url == 'http://priority2:11434'
+
+def test_get_best_host_prefers_local_model_over_vram(mock_host_manager_for_logic):
+    """
+    Tests that get_best_host selects a host with the model locally over a host
+    with more free VRAM but without the model at all.
+    """
+    hm, (host1, host2, host3) = mock_host_manager_for_logic
+    # host1 (P1) has the model on disk. host3 (P3) has more VRAM but no model.
+    host1.local_models = ['the-model']
+
+    best_host = hm.get_best_host('the-model')
+    assert best_host.url == 'http://priority1:11434'
 
 def test_get_best_host_respects_priority_when_multiple_hosts_have_model(mock_host_manager_for_logic):
     """
