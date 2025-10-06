@@ -1,0 +1,9 @@
+{
+  "hosts": [
+    {
+      "url": "http://localhost:11434",
+      "total_vram_mb": 8192,
+      "priority": 1
+    }
+  ]
+}

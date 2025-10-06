@@ -93,7 +93,7 @@ function init() {
 
 function deploy() {
 
-    local files_to_copy="host_manager.py main.py requirements.txt"
+    local files_to_copy="host_manager.py main.py requirements.txt mgmt/install.sh"
     if [[ debug -eq 1 ]]; then
         log "Files to copy: ${files_to_copy}"
     fi

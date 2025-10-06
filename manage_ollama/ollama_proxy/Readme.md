@@ -16,11 +16,22 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
 
 ## Setup
 
+### Automatic
+
+1. run install.sh. This will configure the host, including adding the systemd integration.
+
+```bash
+./install.sh
+```
+
+### Manual
+
 1.  **Configuration:**
     - Rename `config.json.example` to `config.json`.
     - Edit `config.json` to define your Ollama hosts. Each host configuration requires:
         - `url`: The base URL of the Ollama API (e.g., `http://192.168.1.100:11434`).
         - `total_vram_mb`: This is the amount of VRAM available on the host in MiB.
+        - priority (optional), defines which host to use in case of multiple options.
 
     **Example `config.json`:**
     ```json
@@ -28,7 +39,8 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
       "hosts": [
         {
           "url": "http://ollama-host-1:11434",
-          "total_vram_mb": 16384
+          "total_vram_mb": 16384,
+          "piority": 1
         },
         {
           "url": "http://host2:11434",
@@ -74,6 +86,7 @@ The project includes a deployment script (`mgmt/deploy.sh`) that simplifies depl
 - `host_manager.py`
 - `main.py`
 - `requirements.txt`
+- `install.sh`
 
 ### Usage
 

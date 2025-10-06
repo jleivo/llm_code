@@ -11,29 +11,80 @@ echo "It will create a config.json if it doesn't exist, and can optionally creat
 echo ""
 
 # --- Config File ---
-CONFIG_FILE="config.json"
-CONFIG_EXAMPLE="config.json.example"
+CONFIG_FILE=${CONFIG_FILE:-"config.json"}
+
+if ! command -v jq &> /dev/null
+then
+    echo "jq is not installed. Please install jq to validate the configuration."
+    exit 0
+fi
 
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating default configuration file..."
-    if [ -f "$CONFIG_EXAMPLE" ]; then
-        cp "$CONFIG_EXAMPLE" "$CONFIG_FILE"
-        echo "'$CONFIG_FILE' created. Please edit it to match your environment."
-    else
-        echo "ERROR: '$CONFIG_EXAMPLE' not found. Cannot create configuration."
+    
+    # Initialize config with empty hosts array
+    echo '{"hosts": []}' > "$CONFIG_FILE"
+    
+    current_priority=1
+    while true; do
+        read -rp "Enter Ollama server URL (default: http://localhost:11434): " OLLAMA_URL
+        OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
+        read -rp "Enter total VRAM in MB (default: 8192): " TOTAL_VRAM_MB
+        TOTAL_VRAM_MB=${TOTAL_VRAM_MB:-8192}
+        read -rp "Enter priority for the host (default: $current_priority): " PRIORITY
+        PRIORITY=${PRIORITY:-$current_priority}
+        
+        # Create a new host entry
+        NEW_HOST=$(cat << EOF
+{
+  "url": "$OLLAMA_URL",
+  "total_vram_mb": $TOTAL_VRAM_MB,
+  "priority": $PRIORITY
+}
+EOF
+)
+        # Add the host to the config file using jq to avoid fragile sed operations.
+        # Use a temporary file to write the updated JSON atomically.
+        tmpfile=$(mktemp)
+        # jq accepts a JSON value via --argjson; pass the NEW_HOST string as JSON.
+        if ! jq --argjson host "$NEW_HOST" '.hosts += [$host]' "$CONFIG_FILE" > "$tmpfile"; then
+            rm -f "$tmpfile"
+            echo "ERROR: Failed to update configuration file with jq."
+            exit 1
+        fi
+        if ! mv "$tmpfile" "$CONFIG_FILE"; then
+            rm -f "$tmpfile"
+            echo "ERROR: Failed to write updated configuration file."
+            exit 1
+        fi
+        
+        read -p "Add another host? (y/N) " -n 1 -r
+        echo # Move to new line
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            break
+        fi
+        ((current_priority++))
+    done
+    
+    # Format the config file nicely
+    if ! jq . "$CONFIG_FILE" > "$CONFIG_FILE.tmp"; then
+        rm -f "$CONFIG_FILE.tmp"
+        echo "ERROR: Failed to format configuration file."
         exit 1
     fi
+    if ! mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"; then
+        rm -f "$CONFIG_FILE.tmp"
+        echo "ERROR: Failed to update configuration file."
+        exit 1
+    fi
+    
+    echo "'$CONFIG_FILE' created. Please edit it to match your environment."
 else
     echo "Configuration file '$CONFIG_FILE' already exists."
 fi
 
 # --- Validate Config ---
 echo "Validating configuration..."
-if ! command -v jq &> /dev/null
-then
-    echo "jq is not installed. Please install jq to validate the configuration."
-    exit 1
-fi
 
 # 1. Check for valid JSON
 if ! jq . "$CONFIG_FILE" > /dev/null; then
@@ -68,7 +119,7 @@ else
 fi
 
 echo "Installing dependencies..."
-if ! "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS_FILE"; then
+if ! "$VENV_DIR/bin/pip" install -q -r "$REQUIREMENTS_FILE"; then
     echo "ERROR: Failed to install dependencies from '$REQUIREMENTS_FILE'."
     exit 1
 fi
