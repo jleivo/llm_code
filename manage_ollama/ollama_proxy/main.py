@@ -1,5 +1,6 @@
 import json
 import logging
+import logging.handlers
 import os
 import time
 import hashlib
@@ -7,7 +8,6 @@ import threading
 import argparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, Response
-from starlette.background import BackgroundTask
 import httpx
 from host_manager import HostManager
 
@@ -16,19 +16,112 @@ from host_manager import HostManager
 script_dir = os.path.dirname(__file__)
 log_file_path = os.path.join(script_dir, 'proxy.log')
 root_logger = logging.getLogger()
+
+# Debug: Check initial state
+print(f"[LOGGER INIT DEBUG] Initial handlers: {root_logger.handlers}")
+print(f"[LOGGER INIT DEBUG] Checking if handlers exist: {bool(root_logger.handlers)}")
+
 # Default to INFO, can be overridden by command-line arg.
 root_logger.setLevel(logging.INFO)
-if not root_logger.handlers:
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
-    # File handler
-    file_handler = logging.FileHandler(log_file_path, mode='a')
-    file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
+
+# Clear any existing handlers from other modules
+if root_logger.handlers:
+    print(f"[LOGGER INIT DEBUG] Clearing {len(root_logger.handlers)} existing handlers")
+    for handler in root_logger.handlers[:]:  # Copy list to avoid modification during iteration
+        root_logger.removeHandler(handler)
+        print(f"[LOGGER INIT DEBUG] Removed handler: {type(handler).__name__}")
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+syslog_formatter = logging.Formatter('%(name)s[%(process)d]: %(levelname)s - %(message)s')
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+root_logger.addHandler(console_handler)
+print("[LOGGER INIT DEBUG] Added StreamHandler")
+
+# File handler
+file_handler = logging.FileHandler(log_file_path, mode='a')
+file_handler.setFormatter(formatter)
+root_logger.addHandler(file_handler)
+print(f"[LOGGER INIT DEBUG] Added FileHandler to {log_file_path}")
+
+# Syslog handler with LOG_LOCAL7 facility for easy rsyslog filtering
+syslog_handler = None
+try:
+    # Check if /dev/log exists
+    if not os.path.exists('/dev/log'):
+        print("[SYSLOG DEBUG] /dev/log does not exist. Trying UDP localhost:514")
+        address = ('localhost', 514)
+    else:
+        print(f"[SYSLOG DEBUG] /dev/log found, permissions: {oct(os.stat('/dev/log').st_mode)}")
+        address = '/dev/log'
+    
+    syslog_handler = logging.handlers.SysLogHandler(
+        address=address,
+        facility=logging.handlers.SysLogHandler.LOG_LOCAL7
+    )
+    syslog_handler.setFormatter(syslog_formatter)
+    root_logger.addHandler(syslog_handler)
+    print(f"[SYSLOG DEBUG] Successfully initialized SysLogHandler with address={address}")
+    print(f"[SYSLOG DEBUG] Syslog facility: LOG_LOCAL7 (23)")
+    print(f"[SYSLOG DEBUG] Current handlers: {[type(h).__name__ for h in root_logger.handlers]}")
+except PermissionError as e:
+    print(f"[SYSLOG DEBUG ERROR] Permission denied accessing syslog: {e}")
+    print("[SYSLOG DEBUG] Trying fallback UDP connection to localhost:514")
+    try:
+        syslog_handler = logging.handlers.SysLogHandler(
+            address=('localhost', 514),
+            facility=logging.handlers.SysLogHandler.LOG_LOCAL7
+        )
+        syslog_handler.setFormatter(syslog_formatter)
+        root_logger.addHandler(syslog_handler)
+        print("[SYSLOG DEBUG] Successfully initialized fallback UDP SysLogHandler")
+    except Exception as fallback_e:
+        print(f"[SYSLOG DEBUG ERROR] Fallback also failed: {fallback_e}")
+except Exception as e:
+    print(f"[SYSLOG DEBUG ERROR] Failed to initialize SysLogHandler: {e}")
+    print(f"[SYSLOG DEBUG ERROR] Exception type: {type(e).__name__}")
+
 logger = logging.getLogger(__name__)
+
+# --- Logging Diagnostics ---
+def print_logging_diagnostics():
+    """Print detailed information about the current logging configuration."""
+    print("\n" + "="*70)
+    print("LOGGING CONFIGURATION DIAGNOSTICS")
+    print("="*70)
+    print(f"Root Logger Level: {logging.getLevelName(root_logger.level)}")
+    print(f"Total Handlers: {len(root_logger.handlers)}")
+    for i, handler in enumerate(root_logger.handlers):
+        handler_type = type(handler).__name__
+        handler_level = logging.getLevelName(handler.level) if handler.level else "NOTSET"
+        print(f"\n  Handler {i+1}: {handler_type}")
+        print(f"    Level: {handler_level}")
+        if hasattr(handler, 'baseFilename'):
+            print(f"    File: {handler.baseFilename}")
+        if hasattr(handler, 'address'):
+            print(f"    Address: {handler.address}")
+        if hasattr(handler, 'facility'):
+            facility_num = handler.facility
+            facility_names = {
+                16: "LOG_LOCAL0", 17: "LOG_LOCAL1", 18: "LOG_LOCAL2", 19: "LOG_LOCAL3",
+                20: "LOG_LOCAL4", 21: "LOG_LOCAL5", 22: "LOG_LOCAL6", 23: "LOG_LOCAL7"
+            }
+            facility_name = facility_names.get(facility_num, f"UNKNOWN({facility_num})")
+            print(f"    Facility: {facility_name} ({facility_num})")
+        print(f"    Formatter: {handler.formatter._fmt if handler.formatter else 'None'}")
+    
+    print(f"\nSyslog Socket Check:")
+    if os.path.exists('/dev/log'):
+        stat_info = os.stat('/dev/log')
+        print(f"  /dev/log exists: Yes")
+        print(f"  Permissions: {oct(stat_info.st_mode)}")
+        print(f"  Can write: {os.access('/dev/log', os.W_OK)}")
+    else:
+        print(f"  /dev/log exists: No")
+    
+    print("\n" + "="*70 + "\n")
 
 # --- Configuration ---
 SESSION_TIMEOUT_SECONDS = 15 * 60
@@ -77,29 +170,54 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
         log_body = body.decode(errors='ignore')
         logger.debug(f"Forwarding request to {url}: Body: {log_body[:500]}")
 
-    async with httpx.AsyncClient() as client:
-        req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
-        try:
-            if is_streaming:
-                downstream_response = await client.send(req, stream=True)
-                return StreamingResponse(
-                    downstream_response.aiter_raw(),
-                    status_code=downstream_response.status_code,
-                    headers=downstream_response.headers,
-                    background=BackgroundTask(downstream_response.aclose)
-                )
-            else:
-                downstream_response = await client.send(req, stream=False)
-                response_body = await downstream_response.aread()
-                return Response(
-                    content=response_body,
-                    status_code=downstream_response.status_code,
-                    headers=downstream_response.headers
-                )
-        except httpx.RequestError as e:
-            logger.error(f"Error proxying request to {url}: {e}")
-            host.mark_as_unavailable()
-            raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
+    client = httpx.AsyncClient()
+    req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
+    try:
+        if is_streaming:
+            downstream_response = await client.send(req, stream=True)
+            
+            if DEBUG_MODE:
+                logger.debug(f"Streaming response status: {downstream_response.status_code}")
+                logger.debug(f"Response headers: {dict(downstream_response.headers)}")
+            
+            # For streaming responses, we need to exclude only content-length since it conflicts
+            # with chunked encoding. Keep transfer-encoding: chunked so the client knows chunks are coming.
+            response_headers = {}
+            headers_to_skip = {'content-length', 'content-encoding'}
+            for key, value in downstream_response.headers.items():
+                if key.lower() not in headers_to_skip:
+                    response_headers[key] = value
+            
+            if DEBUG_MODE:
+                logger.debug(f"Filtered headers for streaming: {response_headers}")
+            
+            # Create a custom generator that keeps the client alive
+            async def response_generator():
+                try:
+                    async for chunk in downstream_response.aiter_raw():
+                        yield chunk
+                finally:
+                    await client.aclose()
+            
+            return StreamingResponse(
+                response_generator(),
+                status_code=downstream_response.status_code,
+                headers=response_headers
+            )
+        else:
+            downstream_response = await client.send(req, stream=False)
+            response_body = await downstream_response.aread()
+            await client.aclose()
+            return Response(
+                content=response_body,
+                status_code=downstream_response.status_code,
+                headers=downstream_response.headers
+            )
+    except httpx.RequestError as e:
+        await client.aclose()
+        logger.error(f"Error proxying request to {url}: {e}")
+        host.mark_as_unavailable()
+        raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
@@ -225,6 +343,8 @@ if __name__ == "__main__":
         logging.getLogger("httpx").setLevel(logging.DEBUG)
         logger.info("Debug mode enabled.")
 
+    # Print logging diagnostics at startup
+    print_logging_diagnostics()
 
     if not os.path.exists(config_path):
         logger.error(f"Configuration file not found at {config_path}. Please create it from the example.")
@@ -235,5 +355,7 @@ if __name__ == "__main__":
         cleanup_thread.start()
 
         import uvicorn
-        logger.info(f"Starting server on http://0.0.0.0:8080")
-        uvicorn.run(app, host="0.0.0.0", port=8080)
+        server_port = host_manager.get_server_port()
+        logger.info(f"Starting server on http://0.0.0.0:{server_port}")
+        logger.info("Test log message to verify all handlers are working (check syslog, console, and proxy.log)")
+        uvicorn.run(app, host="0.0.0.0", port=server_port)

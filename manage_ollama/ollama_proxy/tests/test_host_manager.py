@@ -1,4 +1,6 @@
 import pytest
+import json
+import tempfile
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Adjust path to import the main app and other modules
@@ -151,3 +153,212 @@ async def test_pull_model_on_host_failure_with_error_in_stream(mock_host_manager
     success = await hm.pull_model_on_host(host, 'nonexistent-model')
     assert success is False
     host.update_status.assert_not_called()
+
+
+# --- Test Cases for Server Port Configuration ---
+
+def test_get_server_port_default():
+    """
+    Tests that get_server_port returns the default port 8080 when no port is specified in config.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.get_server_port() == 8080
+    finally:
+        os.unlink(config_path)
+
+
+def test_get_server_port_custom():
+    """
+    Tests that get_server_port returns a custom port when specified in config.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": 9090},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.get_server_port() == 9090
+    finally:
+        os.unlink(config_path)
+
+
+def test_get_server_port_custom_various_ports():
+    """
+    Tests that get_server_port correctly handles various custom ports.
+    """
+    test_ports = [3000, 5000, 8000, 8888, 9999, 12345]
+    
+    for port in test_ports:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "server": {"port": port},
+                "hosts": [
+                    {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+                ]
+            }
+            json.dump(config_data, f)
+            config_path = f.name
+
+        try:
+            hm = HostManager(config_path)
+            assert hm.get_server_port() == port, f"Expected port {port}, got {hm.get_server_port()}"
+        finally:
+            os.unlink(config_path)
+
+
+def test_get_server_port_empty_server_section():
+    """
+    Tests that get_server_port returns the default port when server section exists but is empty.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.get_server_port() == 8080
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_with_server_settings():
+    """
+    Tests that load_config properly loads server settings from config.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": 7000},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1},
+                {"url": "http://host2:11434", "total_vram_mb": 16384, "priority": 2}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.server_config == {"port": 7000}
+        assert len(hm.hosts) == 2
+    finally:
+        os.unlink(config_path)
+
+
+def test_malformed_json_config():
+    """
+    Tests that loading a malformed JSON config file raises an appropriate error.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        f.write('{ "invalid json" invalid }')
+        config_path = f.name
+
+    try:
+        with pytest.raises(json.JSONDecodeError):
+            hm = HostManager(config_path)
+    finally:
+        os.unlink(config_path)
+
+
+def test_missing_hosts_key_in_config():
+    """
+    Tests that loading a config without the required 'hosts' key raises an appropriate error.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": 9090}
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        with pytest.raises(KeyError):
+            hm = HostManager(config_path)
+    finally:
+        os.unlink(config_path)
+
+
+def test_invalid_port_type_string():
+    """
+    Tests that a non-numeric port value is handled. The get_server_port should return the value as-is,
+    but it's the application's responsibility to handle port type validation.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": "invalid_port"},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        # The method returns the value as-is. Type validation should be done at server startup.
+        assert hm.get_server_port() == "invalid_port"
+    finally:
+        os.unlink(config_path)
+
+
+def test_negative_port_value():
+    """
+    Tests that a negative port value is returned as-is. Port validation should be done elsewhere.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": -1234},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.get_server_port() == -1234
+    finally:
+        os.unlink(config_path)
+
+
+def test_port_out_of_valid_range():
+    """
+    Tests that port values outside valid range are returned as-is.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        config_data = {
+            "server": {"port": 99999},
+            "hosts": [
+                {"url": "http://host1:11434", "total_vram_mb": 8192, "priority": 1}
+            ]
+        }
+        json.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        hm = HostManager(config_path)
+        assert hm.get_server_port() == 99999
+    finally:
+        os.unlink(config_path)

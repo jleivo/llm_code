@@ -3,7 +3,6 @@ import logging
 import threading
 import time
 import requests
-import os
 import httpx
 
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +12,7 @@ class HostManager:
     def __init__(self, config_path):
         self.config_path = config_path
         self.hosts = []
+        self.server_config = {}
         self.load_config()
         self.lock = threading.Lock()
         self.monitor_thread = threading.Thread(target=self.monitor_hosts, daemon=True)
@@ -25,7 +25,12 @@ class HostManager:
     def load_config(self):
         with open(self.config_path, 'r') as f:
             config = json.load(f)
+        self.server_config = config.get('server', {})
         self.hosts = [OllamaHost(host_config) for host_config in config['hosts']]
+    
+    def get_server_port(self):
+        """Returns the server port from config, default is 8080."""
+        return self.server_config.get('port', 8080)
 
     def monitor_hosts(self):
         while True:

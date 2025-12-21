@@ -1,4 +1,7 @@
 {
+  "server": {
+    "port": 9090
+  },
   "hosts": [
     {
       "url": "http://ollama.intra.leivo:11434",
