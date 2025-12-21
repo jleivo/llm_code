@@ -88,6 +88,56 @@ def test_get_best_host_selects_max_vram_when_model_is_not_loaded(mock_host_manag
     best_host = hm.get_best_host('model-c')
     assert best_host.url == 'http://priority3:11434'
 
+def test_get_best_host_prefers_vram_when_multiple_hosts_have_model_loaded(mock_host_manager_for_logic):
+    """
+    Tests that when multiple hosts have the model loaded, the one with more free VRAM is preferred,
+    even if it has lower priority. This is the key improvement for VRAM prioritization.
+    """
+    hm, (host1, host2, host3) = mock_host_manager_for_logic
+
+    # Set up scenario: both host1 (P1, 8000MB free) and host3 (P3, 10000MB free) have the model loaded
+    host1.loaded_models = ['test-model']
+    host3.loaded_models = ['test-model']
+
+    # Host3 has more free VRAM despite lower priority, so it should be selected
+    best_host = hm.get_best_host('test-model')
+    assert best_host.url == 'http://priority3:11434'
+    assert best_host.get_free_vram() == 10000
+
+def test_get_best_host_prefers_vram_when_multiple_hosts_have_model_local(mock_host_manager_for_logic):
+    """
+    Tests that when multiple hosts have the model locally, the one with more free VRAM is preferred,
+    even if it has lower priority. This ensures we minimize model unloading.
+    """
+    hm, (host1, host2, host3) = mock_host_manager_for_logic
+
+    # Set up scenario: both host1 (P1, 8000MB free) and host3 (P3, 10000MB free) have the model locally
+    host1.local_models = ['test-model']
+    host3.local_models = ['test-model']
+
+    # Host3 has more free VRAM despite lower priority, so it should be selected
+    best_host = hm.get_best_host('test-model')
+    assert best_host.url == 'http://priority3:11434'
+    assert best_host.get_free_vram() == 10000
+
+def test_get_best_host_respects_priority_when_vram_similar(mock_host_manager_for_logic):
+    """
+    Tests that when hosts have similar VRAM availability, priority is still respected.
+    This ensures we don't break existing priority-based behavior unnecessarily.
+    """
+    hm, (host1, host2, host3) = mock_host_manager_for_logic
+
+    # Set up scenario: both host1 (P1, 8000MB free) and host2 (P2, 8000MB free) have the model loaded
+    host1.loaded_models = ['test-model']
+    host2.loaded_models = ['test-model']
+    host1.free_vram_mb = 8000
+    host2.free_vram_mb = 8000
+
+    # Host1 should be selected due to higher priority (same VRAM)
+    best_host = hm.get_best_host('test-model')
+    assert best_host.url == 'http://priority1:11434'
+    assert best_host.priority == 1
+
 def test_get_best_host_excludes_hosts(mock_host_manager_for_logic):
     """
     Tests that get_best_host correctly excludes specified hosts from selection.

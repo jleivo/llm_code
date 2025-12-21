@@ -62,8 +62,9 @@ class HostManager:
         """
         Finds the best host for a given model, optionally excluding some hosts.
         The logic is as follows:
-        1. Prioritize hosts that already have the model loaded in VRAM, respecting priority.
-        2. Second, prioritize hosts that have the model on disk (but not loaded), respecting priority.
+        1. Prioritize hosts that already have the model loaded in VRAM, but prefer hosts with more free VRAM
+           when multiple hosts have the model loaded (even if lower priority).
+        2. Second, prioritize hosts that have the model on disk (but not loaded), preferring those with more free VRAM.
         3. If no host has the model, select the available host with the most free VRAM to pull to.
         """
         if excluded_urls is None:
@@ -79,15 +80,23 @@ class HostManager:
             # 1. Prioritize hosts with the model already loaded in VRAM.
             loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
             if loaded_hosts:
-                best_host = loaded_hosts[0]  # List is already sorted by priority.
-                logger.info(f"Found host with '{model_name}' loaded in VRAM: {best_host.url} (Priority: {best_host.priority})")
+                # Sort by free VRAM (descending) to prefer hosts with more available memory
+                # This helps avoid unloading models from memory unnecessarily
+                loaded_hosts_sorted = sorted(loaded_hosts, key=lambda h: h.get_free_vram(), reverse=True)
+
+                best_host = loaded_hosts_sorted[0]
+                logger.info(f"Found host with '{model_name}' loaded in VRAM: {best_host.url} (Priority: {best_host.priority}, Free VRAM: {best_host.get_free_vram():.2f}MB)")
                 return best_host
 
             # 2. Prioritize hosts with the model on disk (but not loaded).
             local_hosts = [host for host in available_hosts if model_name in host.get_local_models()]
             if local_hosts:
-                best_host = local_hosts[0] # List is already sorted by priority.
-                logger.info(f"Found host with '{model_name}' available locally on disk: {best_host.url} (Priority: {best_host.priority})")
+                # Sort by free VRAM (descending) to prefer hosts with more available memory
+                # This helps minimize the need to unload other models
+                local_hosts_sorted = sorted(local_hosts, key=lambda h: h.get_free_vram(), reverse=True)
+
+                best_host = local_hosts_sorted[0]
+                logger.info(f"Found host with '{model_name}' available locally on disk: {best_host.url} (Priority: {best_host.priority}, Free VRAM: {best_host.get_free_vram():.2f}MB)")
                 return best_host
 
             # 3. If no host has the model, find the one with the most free VRAM for pulling.
