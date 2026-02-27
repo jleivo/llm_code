@@ -3,3 +3,4 @@ openai-env
 /portal/portal
 .venv
 __pycache__
+*.log

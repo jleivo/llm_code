@@ -6,6 +6,7 @@ import tempfile
 from fastapi.testclient import TestClient
 from fastapi.responses import Response
 from unittest.mock import MagicMock, patch, AsyncMock
+import requests
 
 # Adjust path to import the main app and other modules
 import sys
@@ -441,7 +442,7 @@ def test_various_custom_ports():
     Tests that various custom port configurations are correctly read.
     """
     test_ports = [3000, 5000, 8000, 8888, 9999]
-    
+
     for port in test_ports:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             config_data = {
@@ -459,3 +460,182 @@ def test_various_custom_ports():
             assert retrieved_port == port, f"Expected port {port}, got {retrieved_port}"
         finally:
             os.unlink(config_path)
+
+
+# --- Test Cases for Aggregated Model Endpoints ---
+
+def test_api_tags_aggregates_from_all_hosts(client, mock_host_manager, mocker):
+    """
+    Tests that /api/tags returns combined and deduplicated models from all hosts.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = True
+
+    def mock_requests_get(url, timeout=5):
+        if 'host1' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "digest": "abc123"},
+                    {"name": "mistral:latest", "digest": "def456"}
+                ]
+            })
+        if 'host2' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "digest": "xyz789"},  # duplicate
+                    {"name": "gemma:latest", "digest": "ghi789"}
+                ]
+            })
+        return MockResponse({}, 404)
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data['models']) == 3
+    model_names = [m['name'] for m in response_data['models']]
+    assert 'llama3:latest' in model_names
+    assert 'mistral:latest' in model_names
+    assert 'gemma:latest' in model_names
+
+
+def test_api_ps_aggregates_running_models(client, mock_host_manager, mocker):
+    """
+    Tests that /api/ps returns combined and deduplicated loaded models from all hosts.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = True
+
+    def mock_requests_get(url, timeout=5):
+        if 'host1' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "size_vram": 4096},
+                    {"name": "mistral:latest", "size_vram": 2048}
+                ]
+            })
+        if 'host2' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "size_vram": 4096},  # duplicate
+                    {"name": "gemma:latest", "size_vram": 1024}
+                ]
+            })
+        return MockResponse({}, 404)
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/ps")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data['models']) == 3
+
+
+def test_api_tags_excludes_unavailable_hosts(client, mock_host_manager, mocker):
+    """
+    Tests that /api/tags excludes models from unavailable hosts.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = False  # unavailable
+
+    def mock_requests_get(url, timeout=5):
+        if 'host1' in url:
+            return MockResponse({
+                "models": [{"name": "llama3:latest", "digest": "abc123"}]
+            })
+        return MockResponse({}, 404)
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data['models']) == 1
+    assert response_data['models'][0]['name'] == 'llama3:latest'
+
+
+def test_api_tags_with_empty_hosts(client, mock_host_manager, mocker):
+    """
+    Tests that /api/tags returns empty models list when no hosts have models.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = True
+
+    def mock_requests_get(url, timeout=5):
+        return MockResponse({"models": []})
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data['models'] == []
+
+
+def test_api_tags_error_handling(client, mock_host_manager, mocker):
+    """
+    Tests that /api/tags continues processing even if one host fails.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = True
+
+    def mock_requests_get(url, timeout=5):
+        if 'host1' in url:
+            return MockResponse({
+                "models": [{"name": "llama3:latest", "digest": "abc123"}]
+            })
+        if 'host2' in url:
+            raise requests.RequestException("Connection failed")
+        return MockResponse({}, 404)
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data['models']) == 1
+
+
+def test_api_tags_deduplication_with_different_digests(client, mock_host_manager, mocker):
+    """
+    Tests that /api/tags deduplicates by name even when digests differ.
+    """
+    host1, host2 = mock_host_manager.hosts
+    host1.available = True
+    host2.available = True
+
+    def mock_requests_get(url, timeout=5):
+        if 'host1' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "digest": "abc123", "size_vram": 4096}
+                ]
+            })
+        if 'host2' in url:
+            return MockResponse({
+                "models": [
+                    {"name": "llama3:latest", "digest": "different_digest", "size_vram": 4500}
+                ]
+            })
+        return MockResponse({}, 404)
+
+    mocker.patch('requests.get', side_effect=mock_requests_get)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    # Should only have one instance of llama3:latest
+    assert len(response_data['models']) == 1
+    assert response_data['models'][0]['name'] == 'llama3:latest'

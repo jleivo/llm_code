@@ -9,6 +9,7 @@ import argparse
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, Response
 import httpx
+import requests
 from host_manager import HostManager
 
 # --- Basic Setup ---
@@ -160,6 +161,70 @@ def cleanup_expired_sessions():
                 for sid in expired_keys:
                     del sessions[sid]
 
+# --- Model Aggregation Helpers ---
+def aggregate_models(models_list, key='name'):
+    """
+    Deduplicate a list of model dictionaries by a key (default 'name').
+    Returns a list of unique models.
+    """
+    seen_names = set()
+    unique_models = []
+    for model in models_list:
+        name = model.get(key)
+        if name and name not in seen_names:
+            seen_names.add(name)
+            unique_models.append(model)
+    return unique_models
+
+
+@app.get("/api/tags")
+async def get_all_tags():
+    """
+    Returns combined list of all local models from all hosts, deduplicated.
+    """
+    if not host_manager:
+        raise HTTPException(status_code=503, detail="Host manager not initialized")
+
+    all_models = []
+    for host in host_manager.hosts:
+        if host.is_available():
+            try:
+                response = requests.get(f"{host.url}/api/tags", timeout=5)
+                if response.status_code == 200:
+                    models_data = response.json().get('models', [])
+                    all_models.extend(models_data)
+            except requests.RequestException as e:
+                logger.error(f"Error fetching /api/tags from {host.url}: {e}")
+
+    # Deduplicate by model name
+    unique_models = aggregate_models(all_models)
+    return {"models": unique_models}
+
+
+@app.get("/api/ps")
+async def get_all_running():
+    """
+    Returns combined list of currently loaded/running models from all hosts, deduplicated.
+    """
+    if not host_manager:
+        raise HTTPException(status_code=503, detail="Host manager not initialized")
+
+    all_models = []
+    for host in host_manager.hosts:
+        if host.is_available():
+            try:
+                response = requests.get(f"{host.url}/api/ps", timeout=5)
+                if response.status_code == 200:
+                    models_data = response.json().get('models', [])
+                    all_models.extend(models_data)
+            except requests.RequestException as e:
+                logger.error(f"Error fetching /api/ps from {host.url}: {e}")
+
+    # Deduplicate by model name
+    unique_models = aggregate_models(all_models)
+    return {"models": unique_models}
+
+
 # --- Main Application Logic ---
 async def forward_request(request: Request, host, path: str, body: bytes, is_streaming: bool):
     """Forwards an HTTP request to a specified host and handles the response."""
@@ -223,6 +288,13 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def proxy_request(request: Request, path: str):
     body = await request.body()
+
+    # Handle special aggregated endpoints - don't forward to individual hosts
+    if path == "api/tags" and request.method == "GET":
+        return await get_all_tags()
+    if path == "api/ps" and request.method == "GET":
+        return await get_all_running()
+
     host = None
     is_streaming = True
     model_name = None
