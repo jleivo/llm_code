@@ -306,12 +306,19 @@ class OllamaHost:
     def get_model_size(self, model_name: str) -> int | None:
         """Get the cached size_vram for a model."""
         info = self.model_usage_cache.get(model_name)
-        if info and info.get('size_vram'):
+        if info and info.get('size_vram') is not None:
             return info['size_vram']
 
         # Fallback to persistent cache
         if self.model_cache:
-            return self.model_cache.get_model_size(self.url, model_name)
+            size = self.model_cache.get_model_size(self.url, model_name)
+            if size is not None:
+                # Update memory cache with retrieved value
+                self.model_usage_cache[model_name] = {
+                    "size_vram": size,
+                    "last_used": time.time()
+                }
+                return size
 
         return None
 
