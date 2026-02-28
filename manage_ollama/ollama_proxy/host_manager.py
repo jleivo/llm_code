@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class HostManager:
     def __init__(self, config_path):
         self.config_path = config_path
+        self.model_cache = ModelCache()
         self.hosts = []
         self.server_config = {}
         self.load_config()
@@ -29,7 +30,7 @@ class HostManager:
         with open(self.config_path, 'r') as f:
             config = json.load(f)
         self.server_config = config.get('server', {})
-        self.hosts = [OllamaHost(host_config) for host_config in config['hosts']]
+        self.hosts = [OllamaHost(host_config, self.model_cache) for host_config in config['hosts']]
     
     def get_server_port(self):
         """Returns the server port from config, default is 8080."""
@@ -191,10 +192,11 @@ class HostManager:
         return None
 
 class OllamaHost:
-    def __init__(self, config):
+    def __init__(self, config, model_cache=None):
         self.url = config['url']
         self.total_vram_mb = config.get('total_vram_mb', float('inf'))
         self.priority = config.get('priority')
+        self.model_cache = model_cache
         self.available = False
         self.free_vram_mb = -1
         self.loaded_models = []
@@ -297,11 +299,21 @@ class OllamaHost:
                     "last_used": time.time()  # Update LRU timestamp
                 }
                 self._lru_tracker.record_usage(name)
+                # Persist to global cache
+                if self.model_cache:
+                    self.model_cache.update_model_size(self.url, name, size_vram)
 
     def get_model_size(self, model_name: str) -> int | None:
         """Get the cached size_vram for a model."""
         info = self.model_usage_cache.get(model_name)
-        return info.get('size_vram') if info else None
+        if info and info.get('size_vram'):
+            return info['size_vram']
+
+        # Fallback to persistent cache
+        if self.model_cache:
+            return self.model_cache.get_model_size(self.url, model_name)
+
+        return None
 
     def get_models_sorted_by_lru(self) -> list:
         """Return models sorted by LRU (oldest first)."""

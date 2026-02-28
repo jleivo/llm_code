@@ -1,716 +1,113 @@
 2025-12-21 09:33:06,035 - __main__ - ERROR - Configuration file not found at /home/juha/git/llm_code/manage_ollama/ollama_proxy/config.json. Please create it from the example.
-2026-02-27 22:56:47,916 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-27 22:56:47,918 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-27 22:56:47,918 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-27 22:56:47,922 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-27 22:56:47,923 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-27 22:56:47,923 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-27 22:56:47,994 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 22:56:47,994 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 22:56:47,995 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 22:56:48,003 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 22:56:48,003 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 22:56:48,004 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-27 22:56:48,004 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 22:56:48,148 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,166 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 22:56:48,167 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 22:56:48,167 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 22:56:48,167 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 22:56:48,167 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 22:56:48,167 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 22:56:48,172 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 22:56:48,173 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,173 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-27 22:56:48,173 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 22:56:48,231 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,235 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-27 22:56:48,235 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 22:56:48,236 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 22:56:48,236 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-27 22:56:48,236 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 22:56:48,288 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,325 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 22:56:48,326 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 22:56:48,327 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 22:56:48,339 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 22:56:48,339 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 22:56:48,340 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 22:56:48,341 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 22:56:48,422 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,438 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 22:56:48,439 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 22:56:48,439 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 22:56:48,442 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 22:56:48,442 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 22:56:48,443 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 22:56:48,443 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 22:56:48,444 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,458 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 22:56:48,458 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,459 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-27 22:56:48,459 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 22:56:48,460 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,474 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 22:56:48,474 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,474 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 22:56:48,474 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 22:56:48,475 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 22:56:48,475 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 22:56:48,476 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 22:56:48,476 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 22:56:48,476 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,476 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 22:56:48,476 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-27 22:56:48,477 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,529 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 22:56:48,531 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,532 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 22:56:48,532 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 22:56:48,533 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 22:56:48,535 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 22:56:48,536 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 22:56:48,536 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 22:56:48,537 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 22:56:48,537 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 22:56:48,537 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-27 22:56:48,538 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-27 22:56:48,540 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-27 22:56:48,593 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,612 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,631 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,678 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,702 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-27 22:56:48,703 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 22:56:48,718 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,848 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-27 23:41:16,848 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-27 23:41:16,848 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-27 23:41:16,849 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-27 23:41:16,850 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-27 23:41:16,850 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-27 23:41:16,853 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 23:41:16,853 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 23:41:16,853 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 23:41:16,857 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:41:16,857 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:41:16,857 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-27 23:41:16,857 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:41:16,893 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 23:41:16,899 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 23:41:16,901 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:41:16,901 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-27 23:41:16,901 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-27 23:41:16,901 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:41:16,918 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,919 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-27 23:41:16,920 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:41:16,920 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:41:16,920 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-27 23:41:16,920 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:41:16,938 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,943 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:41:16,943 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:41:16,943 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:41:16,944 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:41:16,944 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:41:16,944 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 23:41:16,944 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:41:16,960 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,966 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:41:16,966 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:41:16,966 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:41:16,967 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:41:16,967 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:41:16,967 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 23:41:16,967 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:41:16,967 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,973 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:41:16,973 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:41:16,973 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-27 23:41:16,973 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:41:16,973 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:16,979 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:41:16,979 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:41:16,979 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:41:16,979 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:41:16,979 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 23:41:16,979 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 23:41:16,979 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 23:41:16,979 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 23:41:16,979 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:41:16,979 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:41:16,979 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-27 23:41:16,980 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,004 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:41:17,004 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:41:17,004 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:41:17,005 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:41:17,005 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 23:41:17,005 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 23:41:17,005 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 23:41:17,005 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 23:41:17,005 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:41:17,005 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:41:17,005 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-27 23:41:17,005 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-27 23:41:17,005 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-27 23:41:17,024 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,029 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,035 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,041 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,047 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-27 23:41:17,048 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:41:17,053 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,480 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-27 23:55:32,480 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-27 23:55:32,480 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-27 23:55:32,482 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-27 23:55:32,482 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,482 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-27 23:55:32,488 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 23:55:32,488 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 23:55:32,488 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 23:55:32,493 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:55:32,493 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:55:32,493 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-27 23:55:32,493 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:55:32,549 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,554 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:55:32,554 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:55:32,555 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:55:32,555 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-27 23:55:32,555 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-27 23:55:32,555 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-27 23:55:32,556 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:55:32,556 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,556 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-27 23:55:32,556 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:55:32,571 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,572 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-27 23:55:32,572 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:55:32,572 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:55:32,572 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-27 23:55:32,572 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:55:32,586 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,591 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:55:32,591 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:55:32,591 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:55:32,593 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:55:32,593 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:55:32,593 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 23:55:32,593 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:55:32,607 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,612 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-27 23:55:32,612 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-27 23:55:32,612 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-27 23:55:32,613 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-27 23:55:32,614 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-27 23:55:32,614 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-27 23:55:32,614 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:55:32,614 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,619 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:55:32,619 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,620 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-27 23:55:32,620 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-27 23:55:32,620 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,625 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:55:32,625 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,625 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:55:32,625 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:55:32,625 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 23:55:32,626 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 23:55:32,626 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 23:55:32,626 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 23:55:32,626 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,626 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:55:32,626 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-27 23:55:32,626 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,632 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-27 23:55:32,632 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,632 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:55:32,632 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-27 23:55:32,632 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-27 23:55:32,632 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-27 23:55:32,632 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-27 23:55:32,633 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-27 23:55:32,633 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-27 23:55:32,633 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-27 23:55:32,633 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-27 23:55:32,633 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-27 23:55:32,633 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-27 23:55:32,655 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,660 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,664 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,669 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,674 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-27 23:55:32,674 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-27 23:55:32,679 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,549 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,549 - host_manager - INFO - Found host with 'the-model' loaded in VRAM: http://priority2:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 08:12:03,552 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,552 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:12:03,553 - host_manager - INFO - Finding best host for model 'model-a' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,553 - host_manager - INFO - Found host with 'model-a' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:12:03,555 - host_manager - INFO - Finding best host for model 'model-c' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,555 - host_manager - INFO - Selected best host for 'model-c': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 08:12:03,557 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,557 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 08:12:03,559 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,559 - host_manager - INFO - Found host with 'test-model' available locally on disk: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 08:12:03,560 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,561 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:12:03,562 - host_manager - INFO - Finding best host for model 'model-a' among 2 available hosts (excluding 1).
-2026-02-28 08:12:03,562 - host_manager - INFO - Selected best host for 'model-a': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 08:12:03,567 - host_manager - INFO - Attempting to pull model 'new-model' on host http://priority1:11434...
-2026-02-28 08:12:03,568 - host_manager - INFO - Pulling 'new-model' on http://priority1:11434: success 
-2026-02-28 08:12:03,568 - host_manager - INFO - Successfully pulled model 'new-model' to host http://priority1:11434.
-2026-02-28 08:12:03,573 - host_manager - INFO - Attempting to pull model 'nonexistent-model' on host http://priority1:11434...
-2026-02-28 08:12:03,574 - host_manager - ERROR - Error pulling model 'nonexistent-model' on http://priority1:11434: model not found
-2026-02-28 08:12:03,706 - host_manager - INFO - Finding best host for model 'new-model' among 3 available hosts (excluding 0).
-2026-02-28 08:12:03,706 - host_manager - INFO - Selected host http://priority2:11434 with LRU eviction of 1 models for 'new-model'.
-2026-02-28 08:12:03,757 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-28 08:12:03,758 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-28 08:12:03,758 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-28 08:12:03,760 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-28 08:12:03,760 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,760 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-28 08:12:03,766 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 08:12:03,767 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 08:12:03,767 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 08:12:03,772 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:12:03,772 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:12:03,772 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-28 08:12:03,772 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:12:03,832 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,843 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:12:03,843 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:12:03,843 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:12:03,843 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 08:12:03,844 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 08:12:03,844 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 08:12:03,847 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:12:03,847 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,847 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-28 08:12:03,847 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:12:03,877 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,879 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-28 08:12:03,880 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:12:03,880 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:12:03,880 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-28 08:12:03,880 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:12:03,910 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,920 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:12:03,920 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:12:03,920 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:12:03,923 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:12:03,923 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:12:03,923 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 08:12:03,924 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:12:03,952 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,961 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:12:03,961 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:12:03,961 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:12:03,963 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:12:03,963 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:12:03,963 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 08:12:03,963 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:12:03,964 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,973 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:12:03,974 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,974 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 08:12:03,974 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:12:03,974 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,983 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:12:03,983 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,983 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:12:03,984 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:12:03,984 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 08:12:03,984 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 08:12:03,984 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 08:12:03,984 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 08:12:03,984 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,984 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:12:03,984 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-28 08:12:03,985 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:12:03,993 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:12:03,994 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,994 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:12:03,994 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:12:03,994 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 08:12:03,995 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 08:12:03,995 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 08:12:03,995 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 08:12:03,995 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:12:03,995 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:12:03,995 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-28 08:12:03,995 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-28 08:12:03,996 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-28 08:12:04,014 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:12:04,024 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-28 08:12:04,036 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:12:04,045 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:12:04,054 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-28 08:12:04,055 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:12:04,063 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:39,768 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,769 - host_manager - INFO - Found host with 'the-model' loaded in VRAM: http://priority2:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 08:14:39,771 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,772 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:14:39,773 - host_manager - INFO - Finding best host for model 'model-a' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,773 - host_manager - INFO - Found host with 'model-a' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:14:39,775 - host_manager - INFO - Finding best host for model 'model-c' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,775 - host_manager - INFO - Selected best host for 'model-c': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 08:14:39,777 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,777 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 08:14:39,779 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,779 - host_manager - INFO - Found host with 'test-model' available locally on disk: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 08:14:39,781 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:39,781 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 08:14:39,782 - host_manager - INFO - Finding best host for model 'model-a' among 2 available hosts (excluding 1).
-2026-02-28 08:14:39,783 - host_manager - INFO - Selected best host for 'model-a': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 08:14:39,787 - host_manager - INFO - Attempting to pull model 'new-model' on host http://priority1:11434...
-2026-02-28 08:14:39,787 - host_manager - INFO - Pulling 'new-model' on http://priority1:11434: success 
-2026-02-28 08:14:39,788 - host_manager - INFO - Successfully pulled model 'new-model' to host http://priority1:11434.
-2026-02-28 08:14:39,791 - host_manager - INFO - Attempting to pull model 'nonexistent-model' on host http://priority1:11434...
-2026-02-28 08:14:39,792 - host_manager - ERROR - Error pulling model 'nonexistent-model' on http://priority1:11434: model not found
-2026-02-28 08:14:39,835 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-28 08:14:39,836 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-28 08:14:39,836 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-28 08:14:39,840 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-28 08:14:39,840 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-28 08:14:39,840 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-28 08:14:39,846 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 08:14:39,846 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 08:14:39,847 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 08:14:39,851 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:14:39,852 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:14:39,852 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-28 08:14:39,852 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:14:39,906 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:39,915 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:14:39,916 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:14:39,916 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:14:39,916 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 08:14:39,916 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 08:14:39,916 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 08:14:39,919 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:14:39,919 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-28 08:14:39,919 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-28 08:14:39,920 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:14:39,949 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:39,951 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-28 08:14:39,951 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:14:39,952 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:14:39,952 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-28 08:14:39,952 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:14:39,977 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:39,985 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:14:39,985 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:14:39,986 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:14:39,988 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:14:39,988 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:14:39,988 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 08:14:39,988 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:14:40,016 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,025 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 08:14:40,025 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 08:14:40,026 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 08:14:40,028 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 08:14:40,028 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 08:14:40,028 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 08:14:40,028 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:14:40,028 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,039 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:14:40,039 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:14:40,039 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 08:14:40,040 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 08:14:40,040 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,049 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:14:40,049 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:14:40,049 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:14:40,049 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:14:40,049 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 08:14:40,050 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 08:14:40,050 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 08:14:40,050 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 08:14:40,050 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:14:40,050 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:14:40,050 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-28 08:14:40,051 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,060 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 08:14:40,060 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:14:40,060 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:14:40,060 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 08:14:40,060 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 08:14:40,061 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 08:14:40,061 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 08:14:40,061 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 08:14:40,061 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 08:14:40,061 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 08:14:40,061 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-28 08:14:40,061 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-28 08:14:40,061 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-28 08:14:40,080 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,090 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,099 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,107 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,116 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-28 08:14:40,116 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,125 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 08:14:40,190 - host_manager - INFO - Finding best host for model 'new-model' among 3 available hosts (excluding 0).
-2026-02-28 08:14:40,190 - host_manager - INFO - Selected host http://priority2:11434 with LRU eviction of 1 models for 'new-model'.
-2026-02-28 10:38:55,982 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,983 - host_manager - INFO - Found host with 'the-model' loaded in VRAM: http://priority2:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 10:38:55,984 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,984 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 10:38:55,986 - host_manager - INFO - Finding best host for model 'model-a' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,986 - host_manager - INFO - Found host with 'model-a' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 10:38:55,987 - host_manager - INFO - Finding best host for model 'model-c' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,987 - host_manager - INFO - Selected best host for 'model-c': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 10:38:55,988 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,988 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 10:38:55,988 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,988 - host_manager - INFO - Found host with 'test-model' available locally on disk: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 10:38:55,989 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:55,989 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 10:38:55,990 - host_manager - INFO - Finding best host for model 'model-a' among 2 available hosts (excluding 1).
-2026-02-28 10:38:55,990 - host_manager - INFO - Selected best host for 'model-a': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 10:38:55,993 - host_manager - INFO - Attempting to pull model 'new-model' on host http://priority1:11434...
-2026-02-28 10:38:55,993 - host_manager - INFO - Pulling 'new-model' on http://priority1:11434: success 
-2026-02-28 10:38:55,993 - host_manager - INFO - Successfully pulled model 'new-model' to host http://priority1:11434.
-2026-02-28 10:38:55,996 - host_manager - INFO - Attempting to pull model 'nonexistent-model' on host http://priority1:11434...
-2026-02-28 10:38:55,996 - host_manager - ERROR - Error pulling model 'nonexistent-model' on http://priority1:11434: model not found
-2026-02-28 10:38:56,031 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-28 10:38:56,032 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-28 10:38:56,032 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-28 10:38:56,033 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-28 10:38:56,033 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-28 10:38:56,033 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-28 10:38:56,033 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-28 10:38:56,034 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-28 10:38:56,034 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-28 10:38:56,034 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,034 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-28 10:38:56,038 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 10:38:56,038 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 10:38:56,038 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 10:38:56,042 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 10:38:56,043 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 10:38:56,043 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-28 10:38:56,043 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 10:38:56,095 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,100 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 10:38:56,101 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 10:38:56,101 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 10:38:56,101 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 10:38:56,101 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 10:38:56,101 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 10:38:56,102 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 10:38:56,103 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,103 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-28 10:38:56,103 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 10:38:56,117 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,118 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-28 10:38:56,119 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 10:38:56,119 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 10:38:56,119 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-28 10:38:56,119 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 10:38:56,133 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,138 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 10:38:56,138 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 10:38:56,138 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 10:38:56,140 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 10:38:56,140 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 10:38:56,140 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 10:38:56,140 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 10:38:56,155 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,161 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 10:38:56,161 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 10:38:56,161 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 10:38:56,162 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 10:38:56,162 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 10:38:56,162 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 10:38:56,162 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 10:38:56,162 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,168 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 10:38:56,168 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,168 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 10:38:56,169 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 10:38:56,169 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,174 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 10:38:56,174 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,174 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 10:38:56,174 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 10:38:56,174 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 10:38:56,175 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 10:38:56,175 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 10:38:56,175 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 10:38:56,175 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,175 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 10:38:56,175 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-28 10:38:56,175 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,180 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 10:38:56,180 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,180 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 10:38:56,180 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 10:38:56,180 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 10:38:56,181 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 10:38:56,181 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 10:38:56,181 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 10:38:56,181 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 10:38:56,181 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 10:38:56,181 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-28 10:38:56,181 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-28 10:38:56,181 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-28 10:38:56,202 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,207 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,212 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,217 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,221 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-28 10:38:56,222 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,227 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 10:38:56,283 - host_manager - INFO - Finding best host for model 'new-model' among 3 available hosts (excluding 0).
-2026-02-28 10:38:56,283 - host_manager - INFO - Selected host http://priority2:11434 with LRU eviction of 1 models for 'new-model'.
-2026-02-28 11:15:32,369 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,369 - host_manager - INFO - Found host with 'the-model' loaded in VRAM: http://priority2:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 11:15:32,370 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,370 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 11:15:32,371 - host_manager - INFO - Finding best host for model 'model-a' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,371 - host_manager - INFO - Found host with 'model-a' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 11:15:32,371 - host_manager - INFO - Finding best host for model 'model-c' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,371 - host_manager - INFO - Selected best host for 'model-c': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 11:15:32,372 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,372 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 11:15:32,373 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,373 - host_manager - INFO - Found host with 'test-model' available locally on disk: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
-2026-02-28 11:15:32,373 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,374 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
-2026-02-28 11:15:32,374 - host_manager - INFO - Finding best host for model 'model-a' among 2 available hosts (excluding 1).
-2026-02-28 11:15:32,374 - host_manager - INFO - Selected best host for 'model-a': http://priority3:11434 with 10000.00MB free VRAM.
-2026-02-28 11:15:32,376 - host_manager - INFO - Attempting to pull model 'new-model' on host http://priority1:11434...
-2026-02-28 11:15:32,376 - host_manager - INFO - Pulling 'new-model' on http://priority1:11434: success 
-2026-02-28 11:15:32,376 - host_manager - INFO - Successfully pulled model 'new-model' to host http://priority1:11434.
-2026-02-28 11:15:32,378 - host_manager - INFO - Attempting to pull model 'nonexistent-model' on host http://priority1:11434...
-2026-02-28 11:15:32,379 - host_manager - ERROR - Error pulling model 'nonexistent-model' on http://priority1:11434: model not found
-2026-02-28 11:15:32,411 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
-2026-02-28 11:15:32,412 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
-2026-02-28 11:15:32,412 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
-2026-02-28 11:15:32,415 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
-2026-02-28 11:15:32,415 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,415 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
-2026-02-28 11:15:32,419 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 11:15:32,419 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 11:15:32,419 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 11:15:32,422 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 11:15:32,422 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 11:15:32,422 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
-2026-02-28 11:15:32,422 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 11:15:32,461 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
-2026-02-28 11:15:32,466 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
-2026-02-28 11:15:32,468 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 11:15:32,468 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,468 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
-2026-02-28 11:15:32,468 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 11:15:32,486 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,487 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
-2026-02-28 11:15:32,487 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 11:15:32,487 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 11:15:32,488 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
-2026-02-28 11:15:32,488 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 11:15:32,502 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,507 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 11:15:32,508 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 11:15:32,508 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 11:15:32,509 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 11:15:32,509 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 11:15:32,509 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 11:15:32,509 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 11:15:32,524 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,530 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
-2026-02-28 11:15:32,530 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
-2026-02-28 11:15:32,530 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
-2026-02-28 11:15:32,531 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
-2026-02-28 11:15:32,531 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
-2026-02-28 11:15:32,532 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
-2026-02-28 11:15:32,532 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 11:15:32,532 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,538 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 11:15:32,538 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,538 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
-2026-02-28 11:15:32,538 - main - INFO - Assigned new host http://host1:11434 to session.
-2026-02-28 11:15:32,539 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,544 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 11:15:32,545 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,545 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 11:15:32,545 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 11:15:32,545 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 11:15:32,545 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 11:15:32,545 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 11:15:32,545 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 11:15:32,545 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,545 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 11:15:32,545 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
-2026-02-28 11:15:32,545 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,551 - main - INFO - Session miss. Finding best host for model 'the-model'.
-2026-02-28 11:15:32,551 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,551 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 11:15:32,551 - main - INFO - Assigned new host http://host2:11434 to session.
-2026-02-28 11:15:32,551 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
-2026-02-28 11:15:32,551 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
-2026-02-28 11:15:32,551 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
-2026-02-28 11:15:32,551 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
-2026-02-28 11:15:32,551 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
-2026-02-28 11:15:32,551 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
-2026-02-28 11:15:32,551 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
-2026-02-28 11:15:32,551 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
-2026-02-28 11:15:32,552 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
-2026-02-28 11:15:32,565 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,570 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,575 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,580 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,585 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
-2026-02-28 11:15:32,585 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,590 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
-2026-02-28 11:15:32,650 - host_manager - INFO - Finding best host for model 'new-model' among 3 available hosts (excluding 0).
-2026-02-28 11:15:32,650 - host_manager - INFO - Selected host http://priority2:11434 with LRU eviction of 1 models for 'new-model'.
+2026-02-28 11:02:48,071 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,071 - host_manager - INFO - Found host with 'the-model' loaded in VRAM: http://priority2:11434 (Priority: 2, Free VRAM: 4000.00MB)
+2026-02-28 11:02:48,074 - host_manager - INFO - Finding best host for model 'the-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,074 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
+2026-02-28 11:02:48,076 - host_manager - INFO - Finding best host for model 'model-a' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,077 - host_manager - INFO - Found host with 'model-a' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
+2026-02-28 11:02:48,079 - host_manager - INFO - Finding best host for model 'model-c' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,079 - host_manager - INFO - Selected best host for 'model-c': http://priority3:11434 with 10000.00MB free VRAM.
+2026-02-28 11:02:48,081 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,081 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
+2026-02-28 11:02:48,084 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,084 - host_manager - INFO - Found host with 'test-model' available locally on disk: http://priority3:11434 (Priority: 3, Free VRAM: 10000.00MB)
+2026-02-28 11:02:48,086 - host_manager - INFO - Finding best host for model 'test-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,086 - host_manager - INFO - Found host with 'test-model' loaded in VRAM: http://priority1:11434 (Priority: 1, Free VRAM: 8000.00MB)
+2026-02-28 11:02:48,089 - host_manager - INFO - Finding best host for model 'model-a' among 2 available hosts (excluding 1).
+2026-02-28 11:02:48,089 - host_manager - INFO - Selected best host for 'model-a': http://priority3:11434 with 10000.00MB free VRAM.
+2026-02-28 11:02:48,096 - host_manager - INFO - Attempting to pull model 'new-model' on host http://priority1:11434...
+2026-02-28 11:02:48,097 - host_manager - INFO - Pulling 'new-model' on http://priority1:11434: success
+2026-02-28 11:02:48,098 - host_manager - INFO - Successfully pulled model 'new-model' to host http://priority1:11434.
+2026-02-28 11:02:48,104 - host_manager - INFO - Attempting to pull model 'nonexistent-model' on host http://priority1:11434...
+2026-02-28 11:02:48,105 - host_manager - ERROR - Error pulling model 'nonexistent-model' on http://priority1:11434: model not found
+2026-02-28 11:02:48,159 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['llama3:latest']
+2026-02-28 11:02:48,159 - host_manager - INFO - Host http://host1:11434 has 6144.00MB free VRAM (2048.00MB used).
+2026-02-28 11:02:48,160 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['llama3:latest']
+2026-02-28 11:02:48,163 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): ['model1']
+2026-02-28 11:02:48,163 - host_manager - INFO - Host http://host1:11434 has 4096.00MB free VRAM (4096.00MB used).
+2026-02-28 11:02:48,163 - host_manager - INFO - Host http://host1:11434 has local models (on disk): ['model1']
+2026-02-28 11:02:48,163 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): ['model2']
+2026-02-28 11:02:48,164 - host_manager - INFO - Host http://host2:11434 has 14336.00MB free VRAM (2048.00MB used).
+2026-02-28 11:02:48,164 - host_manager - INFO - Host http://host2:11434 has local models (on disk): ['model2']
+2026-02-28 11:02:48,164 - host_manager - INFO - Finding best host for model 'codellama:latest' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,164 - host_manager - INFO - Selected best host for 'codellama:latest': http://host2:11434 with 14336.00MB free VRAM.
+2026-02-28 11:02:48,171 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
+2026-02-28 11:02:48,171 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
+2026-02-28 11:02:48,172 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
+2026-02-28 11:02:48,178 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
+2026-02-28 11:02:48,178 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
+2026-02-28 11:02:48,178 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 16384.00MB free VRAM.
+2026-02-28 11:02:48,178 - main - INFO - Assigned new host http://host2:11434 to session.
+2026-02-28 11:02:48,255 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,265 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
+2026-02-28 11:02:48,265 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
+2026-02-28 11:02:48,265 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
+2026-02-28 11:02:48,265 - host_manager - INFO - Host http://host2:11434 has loaded models (in VRAM): []
+2026-02-28 11:02:48,266 - host_manager - INFO - Host http://host2:11434 has 16384.00MB free VRAM (0.00MB used).
+2026-02-28 11:02:48,266 - host_manager - INFO - Host http://host2:11434 has local models (on disk): []
+2026-02-28 11:02:48,269 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
+2026-02-28 11:02:48,269 - host_manager - INFO - Finding best host for model 'llama3:latest' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,270 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8000.00MB free VRAM.
+2026-02-28 11:02:48,270 - main - INFO - Assigned new host http://host1:11434 to session.
+2026-02-28 11:02:48,333 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,335 - main - INFO - Session host http://host1:11434 is unavailable. Finding a new host.
+2026-02-28 11:02:48,336 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
+2026-02-28 11:02:48,336 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
+2026-02-28 11:02:48,336 - host_manager - INFO - Selected best host for 'llama3:latest': http://host2:11434 with 2000.00MB free VRAM.
+2026-02-28 11:02:48,336 - main - INFO - Assigned new host http://host2:11434 to session.
+2026-02-28 11:02:48,392 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,402 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
+2026-02-28 11:02:48,402 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
+2026-02-28 11:02:48,402 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
+2026-02-28 11:02:48,405 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
+2026-02-28 11:02:48,406 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
+2026-02-28 11:02:48,406 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
+2026-02-28 11:02:48,406 - main - INFO - Assigned new host http://host1:11434 to session.
+2026-02-28 11:02:48,445 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,454 - host_manager - INFO - Host http://host1:11434 has loaded models (in VRAM): []
+2026-02-28 11:02:48,454 - host_manager - INFO - Host http://host1:11434 has 8192.00MB free VRAM (0.00MB used).
+2026-02-28 11:02:48,454 - host_manager - INFO - Host http://host1:11434 has local models (on disk): []
+2026-02-28 11:02:48,457 - main - INFO - Session miss. Finding best host for model 'llama3:latest'.
+2026-02-28 11:02:48,457 - host_manager - INFO - Finding best host for model 'llama3:latest' among 1 available hosts (excluding 0).
+2026-02-28 11:02:48,457 - host_manager - INFO - Selected best host for 'llama3:latest': http://host1:11434 with 8192.00MB free VRAM.
+2026-02-28 11:02:48,457 - main - INFO - Assigned new host http://host1:11434 to session.
+2026-02-28 11:02:48,458 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,468 - main - INFO - Session miss. Finding best host for model 'the-model'.
+2026-02-28 11:02:48,468 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,468 - host_manager - INFO - Found host with 'the-model' available locally on disk: http://host1:11434 (Priority: 2, Free VRAM: 4000.00MB)
+2026-02-28 11:02:48,468 - main - INFO - Assigned new host http://host1:11434 to session.
+2026-02-28 11:02:48,469 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,478 - main - INFO - Session miss. Finding best host for model 'the-model'.
+2026-02-28 11:02:48,479 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,479 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
+2026-02-28 11:02:48,479 - main - INFO - Assigned new host http://host2:11434 to session.
+2026-02-28 11:02:48,479 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
+2026-02-28 11:02:48,480 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
+2026-02-28 11:02:48,480 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
+2026-02-28 11:02:48,480 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
+2026-02-28 11:02:48,480 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,480 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
+2026-02-28 11:02:48,481 - main - INFO - Successfully pulled 'the-model' to http://host2:11434. Retrying request.
+2026-02-28 11:02:48,481 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,491 - main - INFO - Session miss. Finding best host for model 'the-model'.
+2026-02-28 11:02:48,491 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,492 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
+2026-02-28 11:02:48,492 - main - INFO - Assigned new host http://host2:11434 to session.
+2026-02-28 11:02:48,492 - main - WARNING - Model 'the-model' not found on host http://host2:11434. Attempting to find another host.
+2026-02-28 11:02:48,495 - host_manager - INFO - Finding best host for model 'the-model' among 1 available hosts (excluding 1).
+2026-02-28 11:02:48,496 - host_manager - INFO - Selected best host for 'the-model': http://host1:11434 with 4000.00MB free VRAM.
+2026-02-28 11:02:48,496 - main - WARNING - No other host has model 'the-model'. Attempting to pull it.
+2026-02-28 11:02:48,496 - host_manager - INFO - Finding best host for model 'the-model' among 2 available hosts (excluding 0).
+2026-02-28 11:02:48,496 - host_manager - INFO - Selected best host for 'the-model': http://host2:11434 with 8000.00MB free VRAM.
+2026-02-28 11:02:48,497 - main - ERROR - Failed to pull model 'the-model' on host http://host2:11434.
+2026-02-28 11:02:48,497 - main - ERROR - Exhausted all options for model 'the-model'. Returning 404.
+2026-02-28 11:02:48,498 - httpx - INFO - HTTP Request: POST http://testserver/api/chat "HTTP/1.1 404 Not Found"
+2026-02-28 11:02:48,521 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,531 - httpx - INFO - HTTP Request: GET http://testserver/api/ps "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,539 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,548 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,557 - main - ERROR - Error fetching /api/tags from http://host2:11434: Connection failed
+2026-02-28 11:02:48,558 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,566 - httpx - INFO - HTTP Request: GET http://testserver/api/tags "HTTP/1.1 200 OK"
+2026-02-28 11:02:48,628 - host_manager - INFO - Finding best host for model 'new-model' among 3 available hosts (excluding 0).
+2026-02-28 11:02:48,628 - host_manager - INFO - Selected host http://priority2:11434 with LRU eviction of 1 models for 'new-model'.
