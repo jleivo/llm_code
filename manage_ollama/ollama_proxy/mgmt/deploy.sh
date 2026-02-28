@@ -93,14 +93,14 @@ function init() {
 
 function deploy() {
 
-    local files_to_copy="host_manager.py main.py requirements.txt mgmt/install.sh"
+    local files_to_copy="host_manager.py main.py lru_tracker.py model_cache.py requirements.txt mgmt/install.sh"
     if [[ debug -eq 1 ]]; then
         log "Files to copy: ${files_to_copy}"
     fi
 
     log "Deploying to ${destination}"
     # scp needs to the files unquoted
-    # shellcheck disable=SC2086 
+    # shellcheck disable=SC2086
     scp -r ${files_to_copy} "${destination}" || { log "ERROR: SCP failed"; return 1; }
 
     log "Deploy completed" "${debug}"
