@@ -129,7 +129,7 @@ def test_best_host_selection_chooses_max_vram(mock_host_manager, mocker, caplog)
     best_host = mock_host_manager.get_best_host('codellama:latest')
 
     assert best_host is host2
-    assert f"Selected best host for pulling 'codellama:latest': {host2.url}" in caplog.text
+    assert f"Selected best host for 'codellama:latest': {host2.url}" in caplog.text
 
 @pytest.mark.asyncio
 async def test_proxy_routing_and_session_creation(client, mock_host_manager, mocker, caplog):
@@ -294,7 +294,8 @@ async def test_model_not_found_triggers_pull_if_no_alternative(client, mock_host
 
     assert response.status_code == 200
     assert response.json() == {"response": "success from pull"}
-    assert f"No hosts have 'the-model' available. Selecting host with most free VRAM to pull the model." in caplog.text
+    # New behavior: uses more concise log message when model size is known and fits
+    assert "Selected best host for 'the-model'" in caplog.text
     mock_host_manager.pull_model_on_host.assert_called_once_with(host2, 'the-model')
     assert main.forward_request.call_args_list[1].args[1] == host2
 

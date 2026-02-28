@@ -1,6 +1,7 @@
 import pytest
 import json
 import tempfile
+import time
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Adjust path to import the main app and other modules
@@ -412,3 +413,87 @@ def test_port_out_of_valid_range():
         assert hm.get_server_port() == 99999
     finally:
         os.unlink(config_path)
+
+
+# --- LRU Eviction Tests for OllamaHost ---
+
+def test_update_model_usage_cache(mock_host_manager_for_logic):
+    """Test that model usage cache is updated with sizes."""
+    hm, (host1, _, _) = mock_host_manager_for_logic
+    host1.available = True
+
+    models_data = [
+        {'name': 'test-model', 'size_vram': 4096},
+        {'name': 'another-model', 'size_vram': 2048}
+    ]
+
+    host1.update_model_usage_cache(models_data)
+
+    assert host1.get_model_size('test-model') == 4096
+    assert host1.get_model_size('another-model') == 2048
+
+
+def test_get_models_sorted_by_lru(mock_host_manager_for_logic):
+    """Test getting models sorted by LRU."""
+    hm, (host1, _, _) = mock_host_manager_for_logic
+    host1.available = True
+
+    models_data = [{'name': 'model1', 'size_vram': 1024}]
+    host1.update_model_usage_cache(models_data)
+    time.sleep(0.01)
+
+    models_data = [{'name': 'model2', 'size_vram': 2048}]
+    host1.update_model_usage_cache(models_data)
+
+    models = host1.get_models_sorted_by_lru()
+    assert models[0] == 'model1'  # Oldest first
+
+
+def test_get_models_to_evict_no_eviction_needed(mock_host_manager_for_logic):
+    """Test that no eviction is needed when there's enough free VRAM."""
+    hm, (host1, _, _) = mock_host_manager_for_logic
+    host1.available = True
+    host1.free_vram_mb = 8000
+
+    models_data = [{'name': 'loaded-model', 'size_vram': 2048}]
+    host1.update_model_usage_cache(models_data)
+    host1.loaded_models = ['loaded-model']
+
+    # Requesting a model that fits
+    evict = host1.get_models_to_evict(4000)
+    assert evict == []
+
+
+def test_get_models_to_evict_with_eviction(mock_host_manager_for_logic):
+    """Test LRU eviction when VRAM is insufficient."""
+    hm, (host1, _, _) = mock_host_manager_for_logic
+    host1.available = True
+    host1.free_vram_mb = 2000  # Only 2MB free
+
+    models_data = [
+        {'name': 'old-model', 'size_vram': 3000},
+        {'name': 'newer-model', 'size_vram': 4000}
+    ]
+    host1.update_model_usage_cache(models_data)
+    host1.loaded_models = ['old-model', 'newer-model']
+
+    # Record usage with timing
+    host1._lru_tracker.record_usage('old-model')
+    time.sleep(0.01)
+    host1._lru_tracker.record_usage('newer-model')
+
+    # Requesting a model that needs 5MB, but only 2MB free
+    evict = host1.get_models_to_evict(5000)
+
+    # Should evict old-model first (LRU)
+    assert 'old-model' in evict
+
+
+def test_record_model_usage(mock_host_manager_for_logic):
+    """Test recording model usage for LRU tracking."""
+    hm, (host1, _, _) = mock_host_manager_for_logic
+    host1.available = True
+
+    host1.record_model_usage('test-model')
+    models = host1.get_models_sorted_by_lru()
+    assert 'test-model' in models

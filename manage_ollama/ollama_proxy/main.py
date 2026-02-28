@@ -332,6 +332,8 @@ async def proxy_request(request: Request, path: str):
                         if host:
                             logger.info(f"Assigned new host {host.url} to session.")
                             sessions[session_id] = (host, current_time)
+                            # Record model usage for LRU tracking
+                            host.record_model_usage(model_name)
         except json.JSONDecodeError:
             logger.error("Failed to parse JSON body for /api/chat.")
 
@@ -340,6 +342,13 @@ async def proxy_request(request: Request, path: str):
         if not host:
             logger.error("No Ollama hosts available to handle the request.")
             raise HTTPException(status_code=503, detail="No available Ollama hosts")
+
+    # Record model usage for LRU tracking if we have a model name and host
+    if model_name and host:
+        try:
+            host.record_model_usage(model_name)
+        except Exception:
+            pass  # LRU tracking should not block the request
 
     # Initial request forwarding
     response = await forward_request(request, host, path, body, is_streaming)
@@ -369,6 +378,8 @@ async def proxy_request(request: Request, path: str):
                 # A new host was found, but we only retry immediately if it already has the model.
                 if new_host and model_name in new_host.get_loaded_models():
                     logger.info(f"Found alternative host {new_host.url} with model '{model_name}'. Retrying request.")
+                    # Record model usage for LRU tracking on the new host
+                    new_host.record_model_usage(model_name)
                     if session_id:
                         with sessions_lock:
                             sessions[session_id] = (new_host, time.time())

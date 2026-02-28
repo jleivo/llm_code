@@ -14,6 +14,16 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
 - **Configuration via JSON:** Easily manage your Ollama hosts through a `config.json` file.
 - **Logging:** Logs host status changes, routing decisions, and session lifecycle events to both the console and a `proxy.log` file.
 
+### VRAM Management
+
+- **LRU Model Eviction:** When a host runs low on VRAM, the proxy automatically unloads least-recently-used models to make room for new requests, minimizing failures. This is triggered when:
+    1. No host has the model loaded in VRAM
+    2. No host has the model on disk
+    3. No host has enough free VRAM for the model
+    4. At least one host can evict loaded models via LRU to free enough space
+
+- **VRAM Tracking:** The proxy tracks model sizes from `/api/ps` responses and calculates free VRAM using `size_vram` field to make informed routing decisions. Hosts with more free VRAM are preferred when multiple hosts have the same model availability.
+
 ## Setup
 
 ### Automatic

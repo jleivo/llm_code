@@ -5,6 +5,9 @@ import time
 import requests
 import httpx
 
+from lru_tracker import LRUCache
+from model_cache import ModelCache
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -62,10 +65,12 @@ class HostManager:
         """
         Finds the best host for a given model, optionally excluding some hosts.
         The logic is as follows:
-        1. Prioritize hosts that already have the model loaded in VRAM, but prefer hosts with more free VRAM
+        1. Prioritize hosts that already have the model loaded in VRAM, preferring hosts with more free VRAM
            when multiple hosts have the model loaded (even if lower priority).
         2. Second, prioritize hosts that have the model on disk (but not loaded), preferring those with more free VRAM.
-        3. If no host has the model, select the available host with the most free VRAM to pull to.
+        3. If no host has the model, select the available host with the most free VRAM.
+        4. If no host has enough free VRAM but can evict models via LRU, select the host where LRU eviction
+           would free enough space (with fewest evictions preferred).
         """
         if excluded_urls is None:
             excluded_urls = []
@@ -81,9 +86,7 @@ class HostManager:
             loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
             if loaded_hosts:
                 # Sort by free VRAM (descending) to prefer hosts with more available memory
-                # This helps avoid unloading models from memory unnecessarily
                 loaded_hosts_sorted = sorted(loaded_hosts, key=lambda h: h.get_free_vram(), reverse=True)
-
                 best_host = loaded_hosts_sorted[0]
                 logger.info(f"Found host with '{model_name}' loaded in VRAM: {best_host.url} (Priority: {best_host.priority}, Free VRAM: {best_host.get_free_vram():.2f}MB)")
                 return best_host
@@ -91,16 +94,12 @@ class HostManager:
             # 2. Prioritize hosts with the model on disk (but not loaded).
             local_hosts = [host for host in available_hosts if model_name in host.get_local_models()]
             if local_hosts:
-                # Sort by free VRAM (descending) to prefer hosts with more available memory
-                # This helps minimize the need to unload other models
                 local_hosts_sorted = sorted(local_hosts, key=lambda h: h.get_free_vram(), reverse=True)
-
                 best_host = local_hosts_sorted[0]
                 logger.info(f"Found host with '{model_name}' available locally on disk: {best_host.url} (Priority: {best_host.priority}, Free VRAM: {best_host.get_free_vram():.2f}MB)")
                 return best_host
 
-            # 3. If no host has the model, find the one with the most free VRAM for pulling.
-            logger.info(f"No hosts have '{model_name}' available. Selecting host with most free VRAM to pull the model.")
+            # 3. Find host with most free VRAM (no eviction needed)
             best_host_by_vram = None
             max_free_vram = -1
             for host in available_hosts:
@@ -109,12 +108,33 @@ class HostManager:
                     max_free_vram = free_vram
                     best_host_by_vram = host
 
+            # 4. If no host has enough VRAM, check if LRU eviction would work
             if best_host_by_vram:
-                logger.info(f"Selected best host for pulling '{model_name}': {best_host_by_vram.url} with {max_free_vram:.2f}MB free VRAM.")
-                return best_host_by_vram
+                # Get estimated model size (0 if unknown, which means it might fit)
+                model_size = best_host_by_vram.get_model_size(model_name) or 0
+                if max_free_vram >= model_size:
+                    logger.info(f"Selected best host for '{model_name}': {best_host_by_vram.url} with {max_free_vram:.2f}MB free VRAM.")
+                    return best_host_by_vram
 
-        logger.warning(f"No suitable host found for model '{model_name}'.")
-        return None
+            # Try LRU eviction scenario
+            eviction_candidates = []
+            for host in available_hosts:
+                model_size = host.get_model_size(model_name) or 0
+                if model_size == 0:
+                    continue  # Skip if size unknown
+                evictable = host.get_models_to_evict(model_size)
+                if evictable:
+                    eviction_candidates.append((host, evictable, model_size))
+
+            if eviction_candidates:
+                # Prefer host with fewest evictions, then most free VRAM
+                eviction_candidates.sort(key=lambda x: (len(x[1]), -x[0].get_free_vram()))
+                best_eviction = eviction_candidates[0]
+                logger.info(f"Selected host {best_eviction[0].url} with LRU eviction of {len(best_eviction[1])} models for '{model_name}'.")
+                return best_eviction[0]
+
+            logger.warning(f"No suitable host found for model '{model_name}'.")
+            return None
 
     async def pull_model_on_host(self, host, model_name):
         """
@@ -179,6 +199,8 @@ class OllamaHost:
         self.free_vram_mb = -1
         self.loaded_models = []
         self.local_models = []
+        self.model_usage_cache = {}  # {model_name: {"size_vram": int, "last_used": float}}
+        self._lru_tracker = LRUCache()
 
     def update_status(self):
         if not self.check_availability():
@@ -225,6 +247,9 @@ class OllamaHost:
 
             logger.info(f"Host {self.url} has {self.free_vram_mb:.2f}MB free VRAM ({used_vram_mb:.2f}MB used).")
 
+            # Update model usage cache with sizes from /api/ps
+            self.update_model_usage_cache(models_data)
+
         except requests.RequestException as e:
             logger.error(f"Error getting loaded model/VRAM data for host {self.url}: {e}")
             self.loaded_models = []
@@ -257,3 +282,60 @@ class OllamaHost:
         if self.available:
             logger.warning(f"Host {self.url} marked as unavailable due to request error.")
         self.available = False
+
+    def update_model_usage_cache(self, models_data: list):
+        """
+        Update the model usage cache from /api/ps response data.
+        Stores size_vram and maintains LRU tracking.
+        """
+        for model in models_data:
+            name = model.get('name')
+            if name:
+                size_vram = model.get('size_vram', 0)
+                self.model_usage_cache[name] = {
+                    "size_vram": size_vram,
+                    "last_used": time.time()  # Update LRU timestamp
+                }
+                self._lru_tracker.record_usage(name)
+
+    def get_model_size(self, model_name: str) -> int | None:
+        """Get the cached size_vram for a model."""
+        info = self.model_usage_cache.get(model_name)
+        return info.get('size_vram') if info else None
+
+    def get_models_sorted_by_lru(self) -> list:
+        """Return models sorted by LRU (oldest first)."""
+        return self._lru_tracker.get_all_models_sorted_by_lru()
+
+    def get_models_to_evict(self, required_vram: int) -> list:
+        """
+        Return list of model names to evict to free required_vram.
+        Returns empty list if enough space already available.
+        """
+        current_free = self.get_free_vram()
+        if current_free >= required_vram:
+            return []
+
+        needed = required_vram - current_free
+        models_to_evict = []
+        evicted_size = 0
+
+        # Sort by LRU, evict oldest first
+        lru_models = self.get_models_sorted_by_lru()
+
+        for model_name in lru_models:
+            if model_name not in self.loaded_models:
+                continue  # Skip if not currently loaded
+            size = self.get_model_size(model_name)
+            if size is None:
+                continue  # Skip if size unknown
+            models_to_evict.append(model_name)
+            evicted_size += size
+            if evicted_size >= needed:
+                break
+
+        return models_to_evict
+
+    def record_model_usage(self, model_name: str):
+        """Record that a model was used (for LRU tracking)."""
+        self._lru_tracker.record_usage(model_name)
