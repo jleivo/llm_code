@@ -93,7 +93,7 @@ function init() {
 
 function deploy() {
 
-    local files_to_copy="host_manager.py main.py lru_tracker.py model_cache.py cache_tool.py requirements.txt mgmt/install.sh"
+    local files_to_copy="host_manager.py main.py lru_tracker.py model_cache.py cache_tool.py requirements.txt mgmt/install.sh logging/ollama_proxy.rsyslog.conf logging/ollama_proxy"
     if [[ debug -eq 1 ]]; then
         log "Files to copy: ${files_to_copy}"
     fi

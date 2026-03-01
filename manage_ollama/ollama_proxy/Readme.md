@@ -12,7 +12,7 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
     - **Failover:** If a host assigned to a session becomes unavailable, the proxy automatically re-routes the next request to the new best host.
 - **Transparent Proxying:** Streams requests and responses to and from the Ollama API without modification, ensuring full compatibility.
 - **Configuration via JSON:** Easily manage your Ollama hosts through a `config.json` file.
-- **Logging:** Logs host status changes, routing decisions, and session lifecycle events to both the console and a `proxy.log` file.
+- **Logging:** Logs host status changes, routing decisions, and session lifecycle events to the console, a `proxy.log` file, and syslog (using LOG_LOCAL7 facility). See `LOGGING.md` for detailed logging configuration.
 
 ### VRAM Management
 
@@ -28,11 +28,13 @@ A lightweight, intelligent proxy for Ollama that monitors multiple Ollama hosts 
 
 ### Automatic
 
-1. run install.sh. This will configure the host, including adding the systemd integration.
+1. Run `install.sh`. This will configure the host, including adding the systemd integration and logging configuration.
 
 ```bash
 ./install.sh
 ```
+
+For detailed logging configuration options, see `LOGGING.md`.
 
 ### Manual
 

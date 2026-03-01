@@ -177,6 +177,43 @@ else
     echo "Skipping systemd service creation."
 fi
 
+# --- Logging Configuration ---
+echo ""
+read -p "Do you want to configure logging (rsyslog and logrotate)? (y/N) " -n 1 -r
+echo # Move to new line
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Configuring logging..."
+
+    # Copy rsyslog configuration
+    if sudo cp "logging/ollama_proxy.rsyslog.conf" /etc/rsyslog.d/ollama_proxy.conf; then
+        echo "Rsyslog configuration copied to /etc/rsyslog.d/ollama_proxy.conf"
+    else
+        echo "ERROR: Failed to copy rsyslog configuration."
+        echo "Please do it manually: sudo cp logging/ollama_proxy.rsyslog.conf /etc/rsyslog.d/ollama_proxy.conf"
+    fi
+
+    # Copy logrotate configuration
+    if sudo cp "logging/ollama_proxy" /etc/logrotate.d/ollama_proxy; then
+        echo "Logrotate configuration copied to /etc/logrotate.d/ollama_proxy"
+    else
+        echo "ERROR: Failed to copy logrotate configuration."
+        echo "Please do it manually: sudo cp logging/ollama_proxy /etc/logrotate.d/ollama_proxy"
+    fi
+
+    # Restart rsyslog
+    if sudo systemctl restart rsyslog; then
+        echo "Rsyslog restarted successfully"
+    else
+        echo "ERROR: Failed to restart rsyslog."
+        echo "Please do it manually: sudo systemctl restart rsyslog"
+    fi
+
+    echo "Logging configuration complete. Logs will be written to /var/log/ollama_proxy.log"
+else
+    echo "Skipping logging configuration."
+fi
+
 echo ""
 echo "Installation complete!"
 echo "Please review your '$CONFIG_FILE' and then start the service manually if needed:"
