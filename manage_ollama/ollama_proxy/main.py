@@ -145,6 +145,12 @@ def get_first_user_message(messages):
             return message.get('content')
     return None
 
+def get_client_info(request: Request):
+    """Extract client information from the request."""
+    client_host = request.client.host if request.client else "unknown"
+    client_port = request.client.port if request.client else "unknown"
+    return f"{client_host}:{client_port}"
+
 def generate_session_id(request, model, first_prompt):
     client_host = request.client.host
     session_key = f"{client_host}:{model}:{first_prompt}"
@@ -178,10 +184,11 @@ def aggregate_models(models_list, key='name'):
 
 
 @app.get("/api/tags")
-async def get_all_tags():
+async def get_all_tags(request: Request):
     """
     Returns combined list of all local models from all hosts, deduplicated.
     """
+    client_info = get_client_info(request)
     if not host_manager:
         raise HTTPException(status_code=503, detail="Host manager not initialized")
 
@@ -194,18 +201,20 @@ async def get_all_tags():
                     models_data = response.json().get('models', [])
                     all_models.extend(models_data)
             except requests.RequestException as e:
-                logger.error(f"Error fetching /api/tags from {host.url}: {e}")
+                logger.error(f"[{client_info}] Error fetching /api/tags from {host.url}: {e}")
 
     # Deduplicate by model name
     unique_models = aggregate_models(all_models)
+    logger.info(f"[{client_info}] Returned aggregated model list ({len(unique_models)} unique models)")
     return {"models": unique_models}
 
 
 @app.get("/api/ps")
-async def get_all_running():
+async def get_all_running(request: Request):
     """
     Returns combined list of currently loaded/running models from all hosts, deduplicated.
     """
+    client_info = get_client_info(request)
     if not host_manager:
         raise HTTPException(status_code=503, detail="Host manager not initialized")
 
@@ -218,33 +227,35 @@ async def get_all_running():
                     models_data = response.json().get('models', [])
                     all_models.extend(models_data)
             except requests.RequestException as e:
-                logger.error(f"Error fetching /api/ps from {host.url}: {e}")
+                logger.error(f"[{client_info}] Error fetching /api/ps from {host.url}: {e}")
 
     # Deduplicate by model name
     unique_models = aggregate_models(all_models)
+    logger.info(f"[{client_info}] Returned aggregated running models list ({len(unique_models)} unique models)")
     return {"models": unique_models}
 
 
 # --- Main Application Logic ---
-async def forward_request(request: Request, host, path: str, body: bytes, is_streaming: bool):
+async def forward_request(request: Request, host, path: str, body: bytes, is_streaming: bool, client_info: str = None):
     """Forwards an HTTP request to a specified host and handles the response."""
     url = f"{host.url}/{path}"
     headers = {k: v for k, v in request.headers.items() if k.lower() != 'host'}
 
     if DEBUG_MODE:
         log_body = body.decode(errors='ignore')
-        logger.debug(f"Forwarding request to {url}: Body: {log_body[:500]}")
+        client_prefix = f"[{client_info}]" if client_info else ""
+        logger.debug(f"{client_prefix} Forwarding request to {url}: Body: {log_body[:500]}")
 
     client = httpx.AsyncClient()
     req = client.build_request(method=request.method, url=url, headers=headers, content=body, timeout=None)
     try:
         if is_streaming:
             downstream_response = await client.send(req, stream=True)
-            
+
             if DEBUG_MODE:
                 logger.debug(f"Streaming response status: {downstream_response.status_code}")
                 logger.debug(f"Response headers: {dict(downstream_response.headers)}")
-            
+
             # For streaming responses, we need to exclude only content-length since it conflicts
             # with chunked encoding. Keep transfer-encoding: chunked so the client knows chunks are coming.
             response_headers = {}
@@ -252,10 +263,10 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
             for key, value in downstream_response.headers.items():
                 if key.lower() not in headers_to_skip:
                     response_headers[key] = value
-            
+
             if DEBUG_MODE:
                 logger.debug(f"Filtered headers for streaming: {response_headers}")
-            
+
             # Create a custom generator that keeps the client alive
             async def response_generator():
                 try:
@@ -263,7 +274,7 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
                         yield chunk
                 finally:
                     await client.aclose()
-            
+
             return StreamingResponse(
                 response_generator(),
                 status_code=downstream_response.status_code,
@@ -280,7 +291,8 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
             )
     except httpx.RequestError as e:
         await client.aclose()
-        logger.error(f"Error proxying request to {url}: {e}")
+        client_prefix = f"[{client_info}]" if client_info else ""
+        logger.error(f"{client_prefix} Error proxying request to {url}: {e}")
         host.mark_as_unavailable()
         raise HTTPException(status_code=502, detail=f"Error connecting to Ollama host: {e}")
 
@@ -288,12 +300,13 @@ async def forward_request(request: Request, host, path: str, body: bytes, is_str
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def proxy_request(request: Request, path: str):
     body = await request.body()
+    client_info = get_client_info(request)
 
     # Handle special aggregated endpoints - don't forward to individual hosts
     if path == "api/tags" and request.method == "GET":
-        return await get_all_tags()
+        return await get_all_tags(request)
     if path == "api/ps" and request.method == "GET":
-        return await get_all_running()
+        return await get_all_running(request)
 
     host = None
     is_streaming = True
@@ -316,31 +329,31 @@ async def proxy_request(request: Request, path: str):
                     if session_id in sessions:
                         h, last_access = sessions[session_id]
                         if not h.is_available():
-                            logger.info(f"Session host {h.url} is unavailable. Finding a new host.")
+                            logger.info(f"[{client_info}] Session host {h.url} is unavailable for model '{model_name}'. Finding a new host.")
                             del sessions[session_id]
                         elif current_time - last_access > SESSION_TIMEOUT_SECONDS:
-                            logger.info("Session expired. Finding a new host.")
+                            logger.info(f"[{client_info}] Session expired for model '{model_name}'. Finding a new host.")
                             del sessions[session_id]
                         else:
-                            logger.info(f"Session hit. Routing to previous host: {h.url}")
+                            logger.info(f"[{client_info}] Session hit for model '{model_name}'. Routing to previous host: {h.url}")
                             host = h
                             sessions[session_id] = (host, current_time)
 
                     if not host:
-                        logger.info(f"Session miss. Finding best host for model '{model_name}'.")
+                        logger.info(f"[{client_info}] Session miss for model '{model_name}'. Finding best host.")
                         host = host_manager.get_best_host(model_name)
                         if host:
-                            logger.info(f"Assigned new host {host.url} to session.")
+                            logger.info(f"[{client_info}] Assigned new host {host.url} to session for model '{model_name}'.")
                             sessions[session_id] = (host, current_time)
                             # Record model usage for LRU tracking
                             host.record_model_usage(model_name)
         except json.JSONDecodeError:
-            logger.error("Failed to parse JSON body for /api/chat.")
+            logger.error(f"[{client_info}] Failed to parse JSON body for /api/chat.")
 
     if not host:
         host = host_manager.get_first_available_host()
         if not host:
-            logger.error("No Ollama hosts available to handle the request.")
+            logger.error(f"[{client_info}] No Ollama hosts available to handle the request.")
             raise HTTPException(status_code=503, detail="No available Ollama hosts")
 
     # Record model usage for LRU tracking if we have a model name and host
@@ -350,8 +363,14 @@ async def proxy_request(request: Request, path: str):
         except Exception:
             pass  # LRU tracking should not block the request
 
+    # Log the routing decision
+    if model_name:
+        logger.info(f"[{client_info}] Routing request for model '{model_name}' to host {host.url}")
+    else:
+        logger.info(f"[{client_info}] Routing request to host {host.url}")
+
     # Initial request forwarding
-    response = await forward_request(request, host, path, body, is_streaming)
+    response = await forward_request(request, host, path, body, is_streaming, client_info)
 
     # --- "Model not found" retry logic ---
     if response.status_code == 404 and model_name:
@@ -366,7 +385,7 @@ async def proxy_request(request: Request, path: str):
         try:
             error_details = json.loads(response_body)
             if "model" in error_details.get("error", "") and "not found" in error_details.get("error", ""):
-                logger.warning(f"Model '{model_name}' not found on host {host.url}. Attempting to find another host.")
+                logger.warning(f"[{client_info}] Model '{model_name}' not found on host {host.url}. Attempting to find another host.")
                 excluded_hosts.append(host.url)
 
                 # Force-refresh host statuses to get the latest data
@@ -377,33 +396,33 @@ async def proxy_request(request: Request, path: str):
 
                 # A new host was found, but we only retry immediately if it already has the model.
                 if new_host and model_name in new_host.get_loaded_models():
-                    logger.info(f"Found alternative host {new_host.url} with model '{model_name}'. Retrying request.")
+                    logger.info(f"[{client_info}] Found alternative host {new_host.url} with model '{model_name}'. Retrying request.")
                     # Record model usage for LRU tracking on the new host
                     new_host.record_model_usage(model_name)
                     if session_id:
                         with sessions_lock:
                             sessions[session_id] = (new_host, time.time())
-                    return await forward_request(request, new_host, path, body, is_streaming)
+                    return await forward_request(request, new_host, path, body, is_streaming, client_info)
 
                 # If no other host has the model, we proceed to the pull logic.
-                logger.warning(f"No other host has model '{model_name}'. Attempting to pull it.")
+                logger.warning(f"[{client_info}] No other host has model '{model_name}'. Attempting to pull it.")
                 # Select the best host to pull the model to (can be any host, even the original one if it's the best option)
                 host_to_pull = host_manager.get_best_host(model_name, excluded_urls=[])
                 if host_to_pull:
                     pull_success = await host_manager.pull_model_on_host(host_to_pull, model_name)
                     if pull_success:
-                        logger.info(f"Successfully pulled '{model_name}' to {host_to_pull.url}. Retrying request.")
+                        logger.info(f"[{client_info}] Successfully pulled '{model_name}' to {host_to_pull.url}. Retrying request.")
                         if session_id:
                             with sessions_lock:
                                 sessions[session_id] = (host_to_pull, time.time())
-                        return await forward_request(request, host_to_pull, path, body, is_streaming)
+                        return await forward_request(request, host_to_pull, path, body, is_streaming, client_info)
                     else:
-                        logger.error(f"Failed to pull model '{model_name}' on host {host_to_pull.url}.")
+                        logger.error(f"[{client_info}] Failed to pull model '{model_name}' on host {host_to_pull.url}.")
                 else:
-                    logger.error("No available host to pull the model to.")
+                    logger.error(f"[{client_info}] No available host to pull the model to.")
 
                 # If all else fails, return the original 404 error.
-                logger.error(f"Exhausted all options for model '{model_name}'. Returning 404.")
+                logger.error(f"[{client_info}] Exhausted all options for model '{model_name}'. Returning 404.")
                 return Response(content=response_body, status_code=404, headers=response.headers)
         except (json.JSONDecodeError, AttributeError):
             # Not the JSON error we were looking for, return the original response
