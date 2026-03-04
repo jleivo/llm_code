@@ -1,0 +1,81 @@
+# config.yaml – Litellm proxy
+model_list:
+  # Ollama models
+  - model_name: "gpt-oss:120b"
+    litellm_params:
+      model: "ollama_chat/gpt-oss:120b" # Ollama‑compatible endpoint
+      api_base: "http://tuprpisrvp02.intra.leivo:7900"   # Ollama server URL
+      keep_alive: "180m"
+      model_info:
+        supports_function_calling: true
+        supports_tools: true
+        supports_thinking: true
+        reasoning_effort: "medium"
+  - model_name: "ollama-kimi-k2"
+    litellm_params:
+      model: "ollama_chat/kimi-k2:1t-cloud"
+      api_base: "http://tuprpisrvp02.intra.leivo:7900"   # Ollama server URL
+      keep_alive: "180m"
+      model_info:
+        supports_function_calling: true
+        supports_tools: true
+
+  # Anthropic
+  - model_name: "claude-sonnet-4-6"
+    litellm_params:
+      model: "anthropic/claude-sonnet-4-6"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+  - model_name: "claude-opus-4-6"
+    litellm_params:
+      model: "anthropic/claude-opus-4-6"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+  - model_name: "claude-haiku-4-5-20251001"
+    litellm_params:
+      model: "anthropic/claude-haiku-4-5"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+
+  # Groq
+  - model_name: "whisper-large-v3-turbo"
+    litellm_params:
+      model: "groq/whisper-large-v3-turbo"
+      api_key: "os.environ/GRPQ_API_KEY"
+      rpm: 20
+    model_info:
+      mode: "audio_transcription"
+  - model_name: "whisper-large-v3"
+    litellm_params:
+      model: "groq/whisper-large-v3"
+      api_key: "os.environ/GRPQ_API_KEY"
+      rpm: 20
+    model_info:
+      mode: "audio_transcription"
+  - model_name: kimi-k2
+    litellm_params:
+      model: "groq/moonshotai/kimi-k2-instruct"
+      drop_params: true
+      additional_drop_params: ["context_management"]
+      api_key: "os.environ/GRPQ_API_KEY"
+      rpm: 60
+      tpm: 10000
+      max_budget: 3.0       # should be equal to 300k tokens
+      input_cost_per_token: 0.00001 
+      output_cost_per_token: 0.00001 
+      budget_duration: 1d
+    model_info:
+      id: "kimi-k2-instruct"
+      supports_function_calling: true
+      supports_tools: true
+      max_input_tokens: 256000
+      max_output_tokens: 4096
+
+  # Kokoro TTS
+  - model_name: "kokoro-tts"
+    litellm_params: 
+      model: "openai/kokoro"
+      api_base: "http://tuvllmsrvp02.intra.leivo:8880/v1"
+      api_key: "not_needed"
+    model_info:
+      mode: "text_to_speech"
+
+router_settings:
+  fallbacks: [{"kimi-k2": ["ollama-kimi-k2"]}]
