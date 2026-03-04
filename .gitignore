@@ -2,3 +2,7 @@
 openai-env
 /portal/portal
 .venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
