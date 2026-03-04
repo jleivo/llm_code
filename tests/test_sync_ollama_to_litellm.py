@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, Mock
-from litellm.scripts.sync_ollama_to_litellm import main
+from litellm.scripts.sync_ollama_to_litellm import main, generate_litellm_config_entry
 
 
 def test_main_function_exists():
@@ -40,3 +40,19 @@ def test_get_ollama_models_failure():
 
         result = get_ollama_models("http://localhost:11434")
         assert result == []
+
+
+def test_generate_litellm_config_entry():
+    """Test YAML generation for LiteLLM config entry"""
+    expected = """- model_name: "llama2:7b"
+  litellm_params:
+    model: "ollama_chat/llama2:7b"
+    api_base: "http://localhost:11434"
+    keep_alive: "180m"
+    model_info:
+      supports_function_calling: true
+      supports_tools: true
+      max_input_tokens: 4096"""
+
+    result = generate_litellm_config_entry("llama2:7b", "http://localhost:11434", 4096)
+    assert result == expected
