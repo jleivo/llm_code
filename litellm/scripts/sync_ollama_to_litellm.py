@@ -4,6 +4,8 @@
 import sys
 import requests
 import yaml
+import argparse
+from pathlib import Path
 from typing import List, Dict, Any
 
 
@@ -140,7 +142,60 @@ def update_config_file(config_path: str, ollama_models: list[str], api_base: str
 
 def main():
     """Main entry point."""
-    sys.exit(0)
+    parser = argparse.ArgumentParser(description='Sync Ollama models to LiteLLM config')
+    parser.add_argument('--ollama-url',
+                       default='http://tuprpisrvp02.intra.leivo:7900',
+                       help='Ollama server URL (default: http://tuprpisrvp02.intra.leivo:7900)')
+    parser.add_argument('--config-file',
+                       default='litellm/config.yaml',
+                       help='Path to LiteLLM config file (default: litellm/config.yaml)')
+    parser.add_argument('--output',
+                       choices=['file', 'stdout'],
+                       default='file',
+                       help='Output destination (default: file)')
+
+    args = parser.parse_args()
+
+    # Get models from Ollama
+    print(f"Fetching models from {args.ollama_url}...")
+    models = get_ollama_models(args.ollama_url)
+    if not models:
+        print("No models found or error connecting to Ollama", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Found {len(models)} models: {', '.join(models)}")
+
+    # Get running models with context sizes
+    print("Fetching running model details...")
+    running_models = get_ollama_running_models(args.ollama_url)
+
+    # Build context size mapping
+    model_contexts = {}
+    for model in models:
+        if model in running_models:
+            model_contexts[model] = running_models[model]
+        else:
+            print(f"Warning: Context size not found for {model}, using default 2048")
+            model_contexts[model] = 2048
+
+    # Output results
+    if args.output == 'stdout':
+        # Print to stdout
+        for model in models:
+            context_size = model_contexts[model]
+            entry = generate_litellm_config_entry(model, args.ollama_url, context_size)
+            print(entry)
+            print()  # Blank line between entries
+    else:
+        # Update config file
+        config_path = Path(args.config_file)
+        if not config_path.exists():
+            print(f"Config file not found: {config_path}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"Updating config file: {config_path}")
+        update_config_file(config_path, models, model_contexts, args.ollama_url)
+        print("Config file updated successfully!")
 
 
 if __name__ == '__main__':

@@ -9,9 +9,10 @@ from litellm.scripts.sync_ollama_to_litellm import main, generate_litellm_config
 def test_main_function_exists():
     """Test that main function exists and can be called"""
     with patch('sys.argv', ['sync_ollama_to_litellm.py']):
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-        assert exc_info.value.code == 0
+        with patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models', return_value=[]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 1  # Exits with 1 when no models found
 
 
 def test_get_ollama_models_success():
@@ -141,3 +142,28 @@ model_list:
 
     # Clean up
     Path(tmp_path).unlink()
+
+
+@patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models')
+@patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_running_models')
+@patch('litellm.scripts.sync_ollama_to_litellm.update_config_file')
+def test_main_integration(mock_update, mock_running, mock_models):
+    """Test main function integration"""
+    from litellm.scripts.sync_ollama_to_litellm import main
+
+    mock_models.return_value = ["llama2:7b", "mistral:7b"]
+    mock_running.return_value = {"llama2:7b": 4096}
+
+    test_args = [
+        'sync_ollama_to_litellm.py',
+        '--ollama-url', 'http://localhost:11434',
+        '--config-file', 'tests/fixtures/temp_config.yaml'
+    ]
+
+    with patch('sys.argv', test_args):
+        with patch('pathlib.Path.exists', return_value=True):
+            main()
+
+    mock_models.assert_called_once_with('http://localhost:11434')
+    mock_running.assert_called_once_with('http://localhost:11434')
+    mock_update.assert_called_once()
