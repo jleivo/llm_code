@@ -251,7 +251,9 @@ def main():
             print(f"Created config file: {config_path}")
 
         print(f"Updating config file: {config_path}")
-        update_config_file(config_path, model_metadatas, args.ollama_url)
+        if not update_config_file(config_path, model_metadatas, args.ollama_url):
+            print("Config file update failed.", file=sys.stderr)
+            sys.exit(1)
         print("Config file updated successfully!")
 
     print(f"Synced {len(model_metadatas)} models: {chat_count} chat, {embedding_count} embedding")
