@@ -119,26 +119,49 @@ def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
         return None
 
 
-def generate_litellm_config_entry(model_name: str, api_base: str, context_size: int) -> str:
-    """Generate a LiteLLM config entry for an Ollama model in YAML format.
+def generate_litellm_config_entry(metadata: ModelMetadata, api_base: str) -> dict:
+    """Generate a LiteLLM config entry dict for an Ollama model.
 
     Args:
-        model_name: Name of the Ollama model
+        metadata: Model metadata including capabilities and context size
         api_base: Base URL of Ollama server
-        context_size: Maximum context size for the model
 
     Returns:
-        YAML formatted config entry as a string
+        Dict representing the config entry
     """
-    return f"""- model_name: "{model_name}"
-  litellm_params:
-    model: "ollama_chat/{model_name}"
-    api_base: "{api_base}"
-    keep_alive: "180m"
-    model_info:
-      supports_function_calling: true
-      supports_tools: true
-      max_input_tokens: {context_size}"""
+    if metadata.is_embedding:
+        return {
+            "model_name": metadata.name,
+            "litellm_params": {
+                "model": f"ollama/{metadata.name}",
+                "api_base": api_base,
+                "keep_alive": "180m",
+                "model_info": {
+                    "mode": "embedding",
+                    "max_input_tokens": metadata.context_size,
+                },
+            },
+        }
+
+    model_info: dict[str, Any] = {}
+    if metadata.supports_tools:
+        model_info["supports_function_calling"] = True
+        model_info["supports_tools"] = True
+    if metadata.supports_vision:
+        model_info["supports_vision"] = True
+    if metadata.supports_thinking:
+        model_info["supports_thinking"] = True
+    model_info["max_input_tokens"] = metadata.context_size
+
+    return {
+        "model_name": metadata.name,
+        "litellm_params": {
+            "model": f"ollama_chat/{metadata.name}",
+            "api_base": api_base,
+            "keep_alive": "180m",
+            "model_info": model_info,
+        },
+    }
 
 
 def update_config_file(config_path: str, ollama_models: list[str], api_base: str, running_models: dict[str, int]) -> bool:

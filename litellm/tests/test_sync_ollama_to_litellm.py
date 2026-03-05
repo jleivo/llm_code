@@ -47,20 +47,65 @@ def test_get_ollama_models_failure():
         assert result == []
 
 
-def test_generate_litellm_config_entry():
-    """Test YAML generation for LiteLLM config entry"""
-    expected = """- model_name: "llama2:7b"
-  litellm_params:
-    model: "ollama_chat/llama2:7b"
-    api_base: "http://localhost:11434"
-    keep_alive: "180m"
-    model_info:
-      supports_function_calling: true
-      supports_tools: true
-      max_input_tokens: 4096"""
+def test_generate_litellm_config_entry_chat_with_tools():
+    from litellm.scripts.sync_ollama_to_litellm import generate_litellm_config_entry, ModelMetadata
+    metadata = ModelMetadata(
+        name="llama3.2-vision:11b",
+        context_size=131072,
+        supports_tools=True,
+        supports_vision=True,
+    )
+    result = generate_litellm_config_entry(metadata, "http://localhost:11434")
+    assert result["model_name"] == "llama3.2-vision:11b"
+    assert result["litellm_params"]["model"] == "ollama_chat/llama3.2-vision:11b"
+    assert result["litellm_params"]["model_info"]["supports_function_calling"] is True
+    assert result["litellm_params"]["model_info"]["supports_tools"] is True
+    assert result["litellm_params"]["model_info"]["supports_vision"] is True
+    assert result["litellm_params"]["model_info"]["max_input_tokens"] == 131072
+    assert "supports_thinking" not in result["litellm_params"]["model_info"]
 
-    result = generate_litellm_config_entry("llama2:7b", "http://localhost:11434", 4096)
-    assert result == expected
+
+def test_generate_litellm_config_entry_thinking():
+    from litellm.scripts.sync_ollama_to_litellm import generate_litellm_config_entry, ModelMetadata
+    metadata = ModelMetadata(
+        name="qwq:32b",
+        context_size=32768,
+        supports_tools=True,
+        supports_thinking=True,
+    )
+    result = generate_litellm_config_entry(metadata, "http://localhost:11434")
+    assert result["litellm_params"]["model"] == "ollama_chat/qwq:32b"
+    assert result["litellm_params"]["model_info"]["supports_thinking"] is True
+    assert "supports_vision" not in result["litellm_params"]["model_info"]
+
+
+def test_generate_litellm_config_entry_embedding():
+    from litellm.scripts.sync_ollama_to_litellm import generate_litellm_config_entry, ModelMetadata
+    metadata = ModelMetadata(
+        name="nomic-embed-text:latest",
+        context_size=8192,
+        is_embedding=True,
+    )
+    result = generate_litellm_config_entry(metadata, "http://localhost:11434")
+    assert result["model_name"] == "nomic-embed-text:latest"
+    assert result["litellm_params"]["model"] == "ollama/nomic-embed-text:latest"
+    assert result["litellm_params"]["model_info"]["mode"] == "embedding"
+    assert result["litellm_params"]["model_info"]["max_input_tokens"] == 8192
+    assert "supports_function_calling" not in result["litellm_params"]["model_info"]
+    assert "supports_tools" not in result["litellm_params"]["model_info"]
+
+
+def test_generate_litellm_config_entry_basic_chat_no_capabilities():
+    from litellm.scripts.sync_ollama_to_litellm import generate_litellm_config_entry, ModelMetadata
+    metadata = ModelMetadata(name="llama2:7b", context_size=4096)
+    result = generate_litellm_config_entry(metadata, "http://localhost:11434")
+    assert result["litellm_params"]["model"] == "ollama_chat/llama2:7b"
+    model_info = result["litellm_params"]["model_info"]
+    assert "supports_function_calling" not in model_info
+    assert "supports_tools" not in model_info
+    assert "supports_vision" not in model_info
+    assert "supports_thinking" not in model_info
+    assert model_info["max_input_tokens"] == 4096
 
 
 def test_update_config_file():
