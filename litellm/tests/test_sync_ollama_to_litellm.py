@@ -424,3 +424,33 @@ def test_update_config_file_no_model_list():
     Path(tmp_path).unlink()
 
 
+def test_model_metadata_defaults():
+    from litellm.scripts.sync_ollama_to_litellm import ModelMetadata
+    m = ModelMetadata(name="llama3:8b", context_size=4096)
+    assert m.name == "llama3:8b"
+    assert m.context_size == 4096
+    assert m.is_embedding is False
+    assert m.supports_tools is False
+    assert m.supports_vision is False
+    assert m.supports_thinking is False
+
+
+def test_model_metadata_embedding():
+    from litellm.scripts.sync_ollama_to_litellm import ModelMetadata
+    m = ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True)
+    assert m.is_embedding is True
+    assert m.supports_tools is False
+
+
+def test_model_metadata_full_capabilities():
+    from litellm.scripts.sync_ollama_to_litellm import ModelMetadata
+    m = ModelMetadata(
+        name="llama3.2-vision:11b",
+        context_size=131072,
+        supports_tools=True,
+        supports_vision=True,
+    )
+    assert m.supports_tools is True
+    assert m.supports_vision is True
+    assert m.supports_thinking is False
+

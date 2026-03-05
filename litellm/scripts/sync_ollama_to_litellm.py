@@ -5,8 +5,19 @@ import sys
 import requests
 import yaml
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any
+
+
+@dataclass
+class ModelMetadata:
+    name: str
+    context_size: int
+    is_embedding: bool = False
+    supports_tools: bool = False
+    supports_vision: bool = False
+    supports_thinking: bool = False
 
 
 def get_ollama_models(ollama_url: str) -> List[str]:
