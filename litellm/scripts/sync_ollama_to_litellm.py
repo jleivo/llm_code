@@ -164,71 +164,49 @@ def generate_litellm_config_entry(metadata: ModelMetadata, api_base: str) -> dic
     }
 
 
-def update_config_file(config_path: str, ollama_models: list[str], api_base: str, running_models: dict[str, int]) -> bool:
+def update_config_file(config_path: str, model_metadatas: list[ModelMetadata], api_base: str) -> bool:
     """Update LiteLLM config file with Ollama models.
 
     Args:
         config_path: Path to the LiteLLM config file
-        ollama_models: List of available Ollama models
+        model_metadatas: List of ModelMetadata for all Ollama models
         api_base: Base URL of Ollama server
-        running_models: Dict of running models with their context sizes
 
     Returns:
         True if successful, False otherwise
     """
     try:
-        # Load existing config
         try:
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f) or {}
         except FileNotFoundError:
             config = {'model_list': []}
 
-        # Ensure model_list exists and is a list
         if 'model_list' not in config or config['model_list'] is None:
             config['model_list'] = []
 
-        # Filter out existing Ollama models from config
-        # Only process dict entries, skip strings/other types
+        # Remove existing Ollama models (both ollama_chat/ and ollama/ prefixes)
         non_ollama_models = []
         for model in config['model_list']:
             if not isinstance(model, dict):
-                continue  # Skip non-dict entries (strings, etc.)
+                continue
             if 'litellm_params' not in model:
                 non_ollama_models.append(model)
                 continue
             if not isinstance(model['litellm_params'], dict):
-                continue  # Skip if litellm_params is not a dict
-            if model['litellm_params'].get('model', '').startswith('ollama_chat/'):
-                continue  # Skip Ollama models (will be replaced)
+                continue
+            model_str = model['litellm_params'].get('model', '')
+            if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
+                continue
             non_ollama_models.append(model)
 
-        # Generate new config entries for Ollama models
-        new_ollama_entries = []
-        for model_name in ollama_models:
-            # Use context size from running models if available, otherwise default
-            context_size = running_models.get(model_name, 2048)
+        new_entries = [
+            generate_litellm_config_entry(metadata, api_base)
+            for metadata in model_metadatas
+        ]
 
-            # Create the config entry as a dict
-            entry = {
-                'model_name': model_name,
-                'litellm_params': {
-                    'model': f'ollama_chat/{model_name}',
-                    'api_base': api_base,
-                    'keep_alive': '180m',
-                    'model_info': {
-                        'supports_function_calling': True,
-                        'supports_tools': True,
-                        'max_input_tokens': context_size
-                    }
-                }
-            }
-            new_ollama_entries.append(entry)
+        config['model_list'] = non_ollama_models + new_entries
 
-        # Combine non-Ollama models with new Ollama models
-        config['model_list'] = non_ollama_models + new_ollama_entries
-
-        # Write updated config back to file
         with open(config_path, 'w') as f:
             yaml.dump(config, f, sort_keys=False, default_flow_style=False)
 

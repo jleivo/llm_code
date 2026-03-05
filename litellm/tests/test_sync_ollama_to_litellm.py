@@ -109,8 +109,7 @@ def test_generate_litellm_config_entry_basic_chat_no_capabilities():
 
 
 def test_update_config_file():
-    """Test updating config file with Ollama models"""
-    # Create a temporary config file
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
     config_content = """
 model_list:
   - model_name: "gpt-4"
@@ -131,62 +130,208 @@ model_list:
         supports_tools: true
         max_input_tokens: 2048
 """
-
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
         tmp.write(config_content)
         tmp_path = tmp.name
 
-    # Define Ollama models with context sizes
-    ollama_models = {
-        "llama2:7b": 4096,  # Updated context size
-        "mistral:7b": 8192,  # New model
-        "llama3:8b": 4096   # New model
-    }
+    model_metadatas = [
+        ModelMetadata(name="llama2:7b", context_size=4096, supports_tools=True),
+        ModelMetadata(name="mistral:7b", context_size=8192, supports_tools=True),
+        ModelMetadata(name="llama3:8b", context_size=4096, supports_tools=True),
+    ]
 
-    # Update the config file
-    update_config_file(tmp_path, ollama_models, "http://localhost:11434", ollama_models)
+    update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    # Read the updated config
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
 
-    print("Models found in config:")
-    for model in updated_config['model_list']:
-        print(f"  - model_name: {model['model_name']}")
-        print(f"    model: {model['litellm_params']['model']}")
+    non_ollama = [m for m in updated_config['model_list']
+                  if not m['litellm_params']['model'].startswith('ollama')]
+    assert len(non_ollama) == 2
+    assert any(m['model_name'] == 'gpt-4' for m in non_ollama)
+    assert any(m['model_name'] == 'claude-3-haiku' for m in non_ollama)
 
-    # Verify that non-Ollama models are preserved
-    non_ollama_models = [m for m in updated_config['model_list'] if 'ollama_chat' not in m['litellm_params']['model']]
-    assert len(non_ollama_models) == 2
-    assert any(m['model_name'] == 'gpt-4' for m in non_ollama_models)
-    assert any(m['model_name'] == 'claude-3-haiku' for m in non_ollama_models)
+    ollama_models_in_config = [m for m in updated_config['model_list']
+                                if m['litellm_params']['model'].startswith('ollama')]
+    assert len(ollama_models_in_config) == 3
 
-    # Verify Ollama models are updated/added correctly
-    ollama_models_in_config = [m for m in updated_config['model_list'] if 'ollama_chat' in m['litellm_params']['model']]
+    llama2 = next(m for m in ollama_models_in_config if m['model_name'] == 'llama2:7b')
+    assert llama2['litellm_params']['model_info']['max_input_tokens'] == 4096
 
-    # Count each model
-    llama2_model = next((m for m in ollama_models_in_config if m['model_name'] == 'llama2:7b'), None)
-    mistral_model = next((m for m in ollama_models_in_config if m['model_name'] == 'mistral:7b'), None)
-    llama3_model = next((m for m in ollama_models_in_config if m['model_name'] == 'llama3:8b'), None)
+    mistral = next(m for m in ollama_models_in_config if m['model_name'] == 'mistral:7b')
+    assert mistral['litellm_params']['model_info']['max_input_tokens'] == 8192
 
-    # Verify llama2:7b was updated (context size changed from 2048 to 4096)
-    assert llama2_model is not None
-    assert llama2_model['model_name'] == 'llama2:7b'
-    assert 'ollama_chat/llama2:7b' in llama2_model['litellm_params']['model']
-    assert llama2_model['litellm_params']['model_info']['max_input_tokens'] == 4096
+    Path(tmp_path).unlink()
 
-    # Verify new models were added
-    assert mistral_model is not None
-    assert mistral_model['model_name'] == 'mistral:7b'
-    assert 'ollama_chat/mistral:7b' in mistral_model['litellm_params']['model']
-    assert mistral_model['litellm_params']['model_info']['max_input_tokens'] == 8192
 
-    assert llama3_model is not None
-    assert llama3_model['model_name'] == 'llama3:8b'
-    assert 'ollama_chat/llama3:8b' in llama3_model['litellm_params']['model']
-    assert llama3_model['litellm_params']['model_info']['max_input_tokens'] == 4096
+def test_update_config_file_embedding_model_uses_ollama_prefix():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("model_list: []")
+        tmp_path = tmp.name
 
-    # Clean up
+    model_metadatas = [
+        ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True),
+    ]
+
+    update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+
+    entry = updated_config['model_list'][0]
+    assert entry['litellm_params']['model'] == "ollama/nomic-embed-text:latest"
+    assert entry['litellm_params']['model_info']['mode'] == "embedding"
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_replaces_existing_embedding_model():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    config_content = """
+model_list:
+  - model_name: "nomic-embed-text:latest"
+    litellm_params:
+      model: "ollama/nomic-embed-text:latest"
+      api_base: "http://localhost:11434"
+      keep_alive: "180m"
+      model_info:
+        mode: "embedding"
+        max_input_tokens: 512
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write(config_content)
+        tmp_path = tmp.name
+
+    model_metadatas = [
+        ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True),
+    ]
+
+    update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+
+    assert len(updated_config['model_list']) == 1
+    assert updated_config['model_list'][0]['litellm_params']['model_info']['max_input_tokens'] == 8192
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_with_empty_file():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+    assert len(updated_config['model_list']) == 1
+    assert updated_config['model_list'][0]['model_name'] == 'llama2:7b'
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_with_empty_model_list():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("model_list: []")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+    assert len(updated_config['model_list']) == 1
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_with_malformed_entry():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("""model_list:
+  - "some string entry"
+  - model_name: "valid-model"
+    litellm_params:
+      model: "openai/gpt-4"
+      api_key: "sk-key"
+""")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+    assert len(updated_config['model_list']) == 2
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_with_null_model_list():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("model_list: null")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+    assert len(updated_config['model_list']) == 1
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_malformed_entries():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("""
+model_list:
+  - model_name: "gpt-4"
+    litellm_params:
+      model: "openai/gpt-4"
+      api_key: "sk-openai-key"
+  - "malformed string entry"
+  - model_name: "llama2:7b"
+    litellm_params:
+      model: "ollama_chat/llama2:7b"
+      api_base: "http://localhost:11434"
+""")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="mistral:7b", context_size=8192)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+
+    dict_entries = [m for m in updated_config['model_list'] if isinstance(m, dict)]
+    assert len(dict_entries) == 2
+    assert any(m['model_name'] == 'gpt-4' for m in dict_entries)
+    assert any('ollama' in m['litellm_params']['model'] for m in dict_entries)
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_no_model_list():
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("other_key: some_value")
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    assert result is True
+    with open(tmp_path, 'r') as f:
+        updated_config = yaml.safe_load(f)
+    assert 'model_list' in updated_config
+    assert len(updated_config['model_list']) == 1
     Path(tmp_path).unlink()
 
 
@@ -213,107 +358,6 @@ def test_main_integration(mock_update, mock_running, mock_models):
     mock_models.assert_called_once_with('http://localhost:11434')
     mock_running.assert_called_once_with('http://localhost:11434')
     mock_update.assert_called_once()
-
-
-def test_update_config_file_with_empty_file():
-    """Test handling of completely empty config file"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("")  # Completely empty file
-        tmp_path = tmp.name
-
-    ollama_models = ["llama2:7b"]
-
-    try:
-        result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", {"llama2:7b": 4096})
-
-        assert result is True
-
-        with open(tmp_path, 'r') as f:
-            updated_config = yaml.safe_load(f)
-
-        assert updated_config is not None
-        assert 'model_list' in updated_config
-        assert len(updated_config['model_list']) == 1
-        assert updated_config['model_list'][0]['model_name'] == 'llama2:7b'
-    finally:
-        Path(tmp_path).unlink()
-
-
-def test_update_config_file_with_empty_model_list():
-    """Test handling of config file with empty model_list"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("model_list: []")  # Empty model_list
-        tmp_path = tmp.name
-
-    ollama_models = ["llama2:7b"]
-
-    try:
-        result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", {"llama2:7b": 4096})
-
-        assert result is True
-
-        with open(tmp_path, 'r') as f:
-            updated_config = yaml.safe_load(f)
-
-        assert updated_config is not None
-        assert 'model_list' in updated_config
-        assert len(updated_config['model_list']) == 1
-    finally:
-        Path(tmp_path).unlink()
-
-
-def test_update_config_file_with_malformed_entry():
-    """Test handling of config file with malformed entries (strings instead of dicts)"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("""model_list:
-  - "some string entry"
-  - model_name: "valid-model"
-    litellm_params:
-      model: "openai/gpt-4"
-      api_key: "sk-key"
-""")  # Mix of string and dict entries
-        tmp_path = tmp.name
-
-    ollama_models = ["llama2:7b"]
-
-    try:
-        result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", {"llama2:7b": 4096})
-
-        assert result is True
-
-        with open(tmp_path, 'r') as f:
-            updated_config = yaml.safe_load(f)
-
-        # String entry should be filtered out, valid model and new ollama model should remain
-        assert updated_config is not None
-        assert 'model_list' in updated_config
-        # Should have the valid model and the new ollama model
-        assert len(updated_config['model_list']) == 2
-    finally:
-        Path(tmp_path).unlink()
-
-
-def test_update_config_file_with_null_model_list():
-    """Test handling of config where model_list is None"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("model_list: null")  # Explicitly null
-        tmp_path = tmp.name
-
-    ollama_models = ["llama2:7b"]
-
-    try:
-        result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", {"llama2:7b": 4096})
-
-        assert result is True
-
-        with open(tmp_path, 'r') as f:
-            updated_config = yaml.safe_load(f)
-
-        assert updated_config is not None
-        assert 'model_list' in updated_config
-        assert len(updated_config['model_list']) == 1
-    finally:
-        Path(tmp_path).unlink()
 
 
 def test_main_config_file_not_found_user_declines():
@@ -360,113 +404,6 @@ def test_main_config_file_not_found_user_accepts():
         assert 'model_list' in config
         assert any(m['model_name'] == 'llama2:7b' for m in config['model_list'])
 
-
-def test_update_config_file_empty_file():
-    """Test handling of empty config file"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("")  # Empty file
-        tmp_path = tmp.name
-
-    ollama_models = {"llama2:7b": 4096}
-
-    result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", ollama_models)
-
-    assert result is True
-
-    # Verify config was created correctly
-    with open(tmp_path, 'r') as f:
-        updated_config = yaml.safe_load(f)
-
-    assert updated_config is not None
-    assert 'model_list' in updated_config
-    assert len(updated_config['model_list']) == 1
-    assert updated_config['model_list'][0]['model_name'] == 'llama2:7b'
-
-    Path(tmp_path).unlink()
-
-
-def test_update_config_file_null_model_list():
-    """Test handling of config with null/None model_list"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("model_list: null")
-        tmp_path = tmp.name
-
-    ollama_models = {"llama2:7b": 4096}
-
-    result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", ollama_models)
-
-    assert result is True
-
-    with open(tmp_path, 'r') as f:
-        updated_config = yaml.safe_load(f)
-
-    assert updated_config is not None
-    # When model_list is null, it should be replaced with the new Ollama models
-    assert len(updated_config['model_list']) == 1
-    assert updated_config['model_list'][0]['model_name'] == 'llama2:7b'
-
-    Path(tmp_path).unlink()
-
-
-def test_update_config_file_malformed_entries():
-    """Test handling of config with malformed/mixed entry types"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        # Config with both dict entries and string entries (malformed YAML)
-        tmp.write("""
-model_list:
-  - model_name: "gpt-4"
-    litellm_params:
-      model: "openai/gpt-4"
-      api_key: "sk-openai-key"
-  - "malformed string entry"
-  - model_name: "llama2:7b"
-    litellm_params:
-      model: "ollama_chat/llama2:7b"
-      api_base: "http://localhost:11434"
-""")
-        tmp_path = tmp.name
-
-    ollama_models = {"mistral:7b": 8192}
-
-    result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", ollama_models)
-
-    assert result is True
-
-    with open(tmp_path, 'r') as f:
-        updated_config = yaml.safe_load(f)
-
-    # Non-dict entries should be filtered out
-    dict_entries = [m for m in updated_config['model_list'] if isinstance(m, dict)]
-    assert len(dict_entries) == 2  # gpt-4 + mistral (llama2 should be replaced)
-
-    # Verify gpt-4 preserved
-    assert any(m['model_name'] == 'gpt-4' for m in dict_entries)
-
-    # Verify new ollama model added
-    assert any('ollama_chat' in m['litellm_params']['model'] for m in dict_entries)
-
-    Path(tmp_path).unlink()
-
-
-def test_update_config_file_no_model_list():
-    """Test handling of config without model_list key"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-        tmp.write("other_key: some_value")
-        tmp_path = tmp.name
-
-    ollama_models = {"llama2:7b": 4096}
-
-    result = update_config_file(tmp_path, ollama_models, "http://localhost:11434", ollama_models)
-
-    assert result is True
-
-    with open(tmp_path, 'r') as f:
-        updated_config = yaml.safe_load(f)
-
-    assert 'model_list' in updated_config
-    assert len(updated_config['model_list']) == 1
-
-    Path(tmp_path).unlink()
 
 
 def test_model_metadata_defaults():
