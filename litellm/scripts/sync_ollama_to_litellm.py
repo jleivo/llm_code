@@ -92,18 +92,24 @@ def update_config_file(config_path: str, ollama_models: list[str], api_base: str
         except FileNotFoundError:
             config = {'model_list': []}
 
-        # Ensure model_list exists
-        if 'model_list' not in config:
+        # Ensure model_list exists and is a list
+        if 'model_list' not in config or config['model_list'] is None:
             config['model_list'] = []
 
         # Filter out existing Ollama models from config
-        non_ollama_models = [
-            model for model in config['model_list']
-            if not (isinstance(model, dict) and
-                   'litellm_params' in model and
-                   isinstance(model['litellm_params'], dict) and
-                   model['litellm_params'].get('model', '').startswith('ollama_chat/'))
-        ]
+        # Only process dict entries, skip strings/other types
+        non_ollama_models = []
+        for model in config['model_list']:
+            if not isinstance(model, dict):
+                continue  # Skip non-dict entries (strings, etc.)
+            if 'litellm_params' not in model:
+                non_ollama_models.append(model)
+                continue
+            if not isinstance(model['litellm_params'], dict):
+                continue  # Skip if litellm_params is not a dict
+            if model['litellm_params'].get('model', '').startswith('ollama_chat/'):
+                continue  # Skip Ollama models (will be replaced)
+            non_ollama_models.append(model)
 
         # Generate new config entries for Ollama models
         new_ollama_entries = []
@@ -190,11 +196,20 @@ def main():
         # Update config file
         config_path = Path(args.config_file)
         if not config_path.exists():
-            print(f"Config file not found: {config_path}", file=sys.stderr)
-            sys.exit(1)
+            print(f"Config file not found: {config_path}")
+            response = input("Create it? [y/N]: ")
+            if response.lower() != 'y':
+                print("Aborted", file=sys.stderr)
+                sys.exit(1)
+            # Create empty config
+            config = {'model_list': []}
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+            print(f"Created config file: {config_path}")
 
         print(f"Updating config file: {config_path}")
-        update_config_file(config_path, models, model_contexts, args.ollama_url)
+        update_config_file(config_path, models, args.ollama_url, model_contexts)
         print("Config file updated successfully!")
 
 
