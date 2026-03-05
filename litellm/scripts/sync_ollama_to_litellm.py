@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Sync Ollama models to LiteLLM config file."""
 
+import re
 import sys
 import requests
 import yaml
@@ -18,6 +19,21 @@ class ModelMetadata:
     supports_tools: bool = False
     supports_vision: bool = False
     supports_thinking: bool = False
+
+
+def parse_context_from_name(model_name: str) -> int | None:
+    """Extract context size from model name tag convention (e.g. 'model:128k' → 131072).
+
+    Args:
+        model_name: Ollama model name, possibly with a :<number>k tag
+
+    Returns:
+        Context size in tokens, or None if no context tag found
+    """
+    match = re.search(r'(?::|-)(\d+)[kK](?:$|-)', model_name)
+    if match:
+        return int(match.group(1)) * 1024
+    return None
 
 
 def get_ollama_models(ollama_url: str) -> List[str]:
@@ -59,15 +75,22 @@ def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
         response.raise_for_status()
         data = response.json()
 
-        # Detect context length from model_info (key ends with .context_length)
-        model_info = data.get("model_info", {})
-        context_size = 2048
-        context_found = False
-        for key, value in model_info.items():
-            if key.endswith(".context_length") and isinstance(value, int):
-                context_size = value
-                context_found = True
-                break
+        # Detect context length: model name tag takes precedence (e.g. model:128k)
+        name_context = parse_context_from_name(model_name)
+        if name_context is not None:
+            context_size = name_context
+            context_found = True
+        else:
+            context_size = 2048
+            context_found = False
+
+        if not name_context:
+            model_info = data.get("model_info", {})
+            for key, value in model_info.items():
+                if key.endswith(".context_length") and isinstance(value, int):
+                    context_size = value
+                    context_found = True
+                    break
         if not context_found:
             print(
                 f"Warning: Context length not found in /api/show for {model_name}, "

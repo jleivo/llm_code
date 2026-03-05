@@ -621,3 +621,79 @@ def test_get_model_info_api_failure_returns_none():
         result = get_model_info("http://localhost:11434", "llama2:7b")
 
     assert result is None
+
+
+# --- parse_context_from_name tests ---
+
+def test_parse_context_from_name_128k():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("qwen3-next-80b:128k") == 128 * 1024
+
+
+def test_parse_context_from_name_8k():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("model:8k") == 8 * 1024
+
+
+def test_parse_context_from_name_case_insensitive():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("model:64K") == 64 * 1024
+
+
+def test_parse_context_from_name_parameter_tag_returns_none():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("llama2:7b") is None
+
+
+def test_parse_context_from_name_latest_returns_none():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("mistral:latest") is None
+
+
+def test_parse_context_from_name_no_tag_returns_none():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("llama3") is None
+
+
+def test_parse_context_from_name_complex_tag_with_k_suffix():
+    from litellm.scripts.sync_ollama_to_litellm import parse_context_from_name
+    assert parse_context_from_name("qwen3:32b-instruct-128k") == 128 * 1024
+
+
+# --- get_model_info uses name-based context over /api/show ---
+
+def test_get_model_info_name_context_overrides_api_show():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["completion", "tools"],
+            "model_info": {"llama.context_length": 32768},  # api/show says 32k
+        }
+        mock_post.return_value = mock_response
+
+        # Model name says 128k — should win
+        result = get_model_info("http://localhost:11434", "qwen3:128k")
+
+    assert result is not None
+    assert result.context_size == 128 * 1024
+
+
+def test_get_model_info_falls_back_to_api_show_when_no_name_context():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["completion", "tools"],
+            "model_info": {"llama.context_length": 32768},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "llama2:7b")
+
+    assert result is not None
+    assert result.context_size == 32768
