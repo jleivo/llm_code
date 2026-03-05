@@ -454,3 +454,120 @@ def test_model_metadata_full_capabilities():
     assert m.supports_vision is True
     assert m.supports_thinking is False
 
+
+def test_get_model_info_full_capabilities():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["completion", "tools", "vision"],
+            "model_info": {"llama.context_length": 131072},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "llama3.2-vision:11b")
+
+    assert result is not None
+    assert result.name == "llama3.2-vision:11b"
+    assert result.context_size == 131072
+    assert result.is_embedding is False
+    assert result.supports_tools is True
+    assert result.supports_vision is True
+    assert result.supports_thinking is False
+
+
+def test_get_model_info_embedding():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["embedding"],
+            "model_info": {"bert.context_length": 8192},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "nomic-embed-text:latest")
+
+    assert result is not None
+    assert result.is_embedding is True
+    assert result.context_size == 8192
+    assert result.supports_tools is False
+
+
+def test_get_model_info_thinking():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["completion", "tools", "thinking"],
+            "model_info": {"llama.context_length": 32768},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "qwq:32b")
+
+    assert result is not None
+    assert result.supports_thinking is True
+    assert result.supports_tools is True
+    assert result.context_size == 32768
+
+
+def test_get_model_info_missing_capabilities_warns(capsys):
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "model_info": {"llama.context_length": 4096},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "llama2:7b")
+
+    assert result is not None
+    assert result.name == "llama2:7b"
+    assert result.context_size == 4096
+    assert result.is_embedding is False
+    assert result.supports_tools is False
+    captured = capsys.readouterr()
+    assert "capabilities" in captured.err
+    assert "llama2:7b" in captured.err
+
+
+def test_get_model_info_missing_context_length_warns(capsys):
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "capabilities": ["completion", "tools"],
+            "model_info": {},
+        }
+        mock_post.return_value = mock_response
+
+        result = get_model_info("http://localhost:11434", "llama2:7b")
+
+    assert result is not None
+    assert result.context_size == 2048
+    captured = capsys.readouterr()
+    assert "context" in captured.err.lower()
+    assert "llama2:7b" in captured.err
+
+
+def test_get_model_info_api_failure_returns_none():
+    from litellm.scripts.sync_ollama_to_litellm import get_model_info
+
+    with patch('requests.post') as mock_post:
+        mock_post.side_effect = Exception("Connection refused")
+
+        result = get_model_info("http://localhost:11434", "llama2:7b")
+
+    assert result is None

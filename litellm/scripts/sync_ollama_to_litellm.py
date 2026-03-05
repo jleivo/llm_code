@@ -61,6 +61,64 @@ def get_ollama_running_models(ollama_url: str) -> dict:
         return {}
 
 
+def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
+    """Get model metadata from Ollama /api/show endpoint.
+
+    Args:
+        ollama_url: Base URL of Ollama server
+        model_name: Name of the model to query
+
+    Returns:
+        ModelMetadata if successful, None if API call failed
+    """
+    try:
+        response = requests.post(
+            f"{ollama_url}/api/show",
+            json={"model": model_name},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        # Detect context length from model_info (key ends with .context_length)
+        model_info = data.get("model_info", {})
+        context_size = 2048
+        context_found = False
+        for key, value in model_info.items():
+            if key.endswith(".context_length") and isinstance(value, int):
+                context_size = value
+                context_found = True
+                break
+        if not context_found:
+            print(
+                f"Warning: Context length not found in /api/show for {model_name}, "
+                "using default 2048",
+                file=sys.stderr,
+            )
+
+        # Detect capabilities
+        capabilities = data.get("capabilities")
+        if capabilities is None:
+            print(
+                f"Warning: /api/show did not return 'capabilities' for model {model_name}. "
+                "Defaulting to basic chat. Upgrade Ollama for accurate capability detection.",
+                file=sys.stderr,
+            )
+            return ModelMetadata(name=model_name, context_size=context_size)
+
+        return ModelMetadata(
+            name=model_name,
+            context_size=context_size,
+            is_embedding="embedding" in capabilities,
+            supports_tools="tools" in capabilities,
+            supports_vision="vision" in capabilities,
+            supports_thinking="thinking" in capabilities,
+        )
+    except Exception as e:
+        print(f"Error fetching model info for {model_name}: {e}", file=sys.stderr)
+        return None
+
+
 def generate_litellm_config_entry(model_name: str, api_base: str, context_size: int) -> str:
     """Generate a LiteLLM config entry for an Ollama model in YAML format.
 
