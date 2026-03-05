@@ -336,19 +336,21 @@ def test_update_config_file_no_model_list():
 
 
 @patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models')
-@patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_running_models')
+@patch('litellm.scripts.sync_ollama_to_litellm.get_model_info')
 @patch('litellm.scripts.sync_ollama_to_litellm.update_config_file')
-def test_main_integration(mock_update, mock_running, mock_models):
-    """Test main function integration"""
-    from litellm.scripts.sync_ollama_to_litellm import main
+def test_main_integration(mock_update, mock_get_info, mock_models):
+    from litellm.scripts.sync_ollama_to_litellm import main, ModelMetadata
 
     mock_models.return_value = ["llama2:7b", "mistral:7b"]
-    mock_running.return_value = {"llama2:7b": 4096}
+    mock_get_info.side_effect = [
+        ModelMetadata(name="llama2:7b", context_size=4096, supports_tools=True),
+        ModelMetadata(name="mistral:7b", context_size=8192, supports_tools=True),
+    ]
 
     test_args = [
         'sync_ollama_to_litellm.py',
         '--ollama-url', 'http://localhost:11434',
-        '--config-file', 'tests/fixtures/temp_config.yaml'
+        '--config-file', 'tests/fixtures/temp_config.yaml',
     ]
 
     with patch('sys.argv', test_args):
@@ -356,46 +358,112 @@ def test_main_integration(mock_update, mock_running, mock_models):
             main()
 
     mock_models.assert_called_once_with('http://localhost:11434')
-    mock_running.assert_called_once_with('http://localhost:11434')
+    assert mock_get_info.call_count == 2
     mock_update.assert_called_once()
 
 
+@patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models')
+@patch('litellm.scripts.sync_ollama_to_litellm.get_model_info')
+def test_main_skips_models_with_api_errors(mock_get_info, mock_models, capsys):
+    from litellm.scripts.sync_ollama_to_litellm import main, ModelMetadata
+
+    mock_models.return_value = ["llama2:7b", "broken-model:7b", "mistral:7b"]
+    mock_get_info.side_effect = [
+        ModelMetadata(name="llama2:7b", context_size=4096),
+        None,  # API failure for broken-model
+        ModelMetadata(name="mistral:7b", context_size=8192),
+    ]
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("model_list: []")
+        tmp_path = tmp.name
+
+    test_args = [
+        'sync_ollama_to_litellm.py',
+        '--ollama-url', 'http://localhost:11434',
+        '--config-file', tmp_path,
+    ]
+
+    with patch('sys.argv', test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert "Skipped 1 model" in captured.out
+    assert "broken-model:7b" in captured.out
+    assert "Synced 2 models" in captured.out
+    Path(tmp_path).unlink()
+
+
+@patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models')
+@patch('litellm.scripts.sync_ollama_to_litellm.get_model_info')
+def test_main_summary_shows_chat_and_embedding_counts(mock_get_info, mock_models, capsys):
+    from litellm.scripts.sync_ollama_to_litellm import main, ModelMetadata
+
+    mock_models.return_value = ["llama2:7b", "nomic-embed-text:latest"]
+    mock_get_info.side_effect = [
+        ModelMetadata(name="llama2:7b", context_size=4096),
+        ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True),
+    ]
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write("model_list: []")
+        tmp_path = tmp.name
+
+    test_args = [
+        'sync_ollama_to_litellm.py',
+        '--ollama-url', 'http://localhost:11434',
+        '--config-file', tmp_path,
+    ]
+
+    with patch('sys.argv', test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert "1 chat" in captured.out
+    assert "1 embedding" in captured.out
+    Path(tmp_path).unlink()
+
+
 def test_main_config_file_not_found_user_declines():
-    """Test that main exits when config file doesn't exist and user says no"""
     with tempfile.TemporaryDirectory() as tmpdir:
         nonexistent_path = Path(tmpdir) / "nonexistent.yaml"
 
         test_args = [
             'sync_ollama_to_litellm.py',
             '--ollama-url', 'http://localhost:11434',
-            '--config-file', str(nonexistent_path)
+            '--config-file', str(nonexistent_path),
         ]
 
         with patch('sys.argv', test_args):
             with patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models', return_value=["llama2:7b"]):
-                with patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_running_models', return_value={"llama2:7b": 4096}):
+                from litellm.scripts.sync_ollama_to_litellm import ModelMetadata
+                with patch('litellm.scripts.sync_ollama_to_litellm.get_model_info',
+                           return_value=ModelMetadata(name="llama2:7b", context_size=4096)):
                     with patch('builtins.input', return_value='n'):
                         with pytest.raises(SystemExit) as exc_info:
+                            from litellm.scripts.sync_ollama_to_litellm import main
                             main()
                         assert exc_info.value.code == 1
         assert not nonexistent_path.exists()
 
 
 def test_main_config_file_not_found_user_accepts():
-    """Test that main creates config file when it doesn't exist and user says yes"""
     with tempfile.TemporaryDirectory() as tmpdir:
         new_config = Path(tmpdir) / "new_config.yaml"
 
         test_args = [
             'sync_ollama_to_litellm.py',
             '--ollama-url', 'http://localhost:11434',
-            '--config-file', str(new_config)
+            '--config-file', str(new_config),
         ]
 
         with patch('sys.argv', test_args):
             with patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_models', return_value=["llama2:7b"]):
-                with patch('litellm.scripts.sync_ollama_to_litellm.get_ollama_running_models', return_value={"llama2:7b": 4096}):
+                from litellm.scripts.sync_ollama_to_litellm import ModelMetadata
+                with patch('litellm.scripts.sync_ollama_to_litellm.get_model_info',
+                           return_value=ModelMetadata(name="llama2:7b", context_size=4096)):
                     with patch('builtins.input', return_value='y'):
+                        from litellm.scripts.sync_ollama_to_litellm import main
                         main()
 
         assert new_config.exists()

@@ -39,27 +39,6 @@ def get_ollama_models(ollama_url: str) -> List[str]:
         return []
 
 
-def get_ollama_running_models(ollama_url: str) -> dict:
-    """Get running models with context sizes from Ollama API.
-
-    Args:
-        ollama_url: Base URL of Ollama server
-
-    Returns:
-        Dict mapping model names to context sizes
-    """
-    try:
-        response = requests.get(f"{ollama_url}/api/ps", timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        return {
-            model["name"]: model.get("context_size", 2048)
-            for model in data.get("models", [])
-        }
-    except Exception as e:
-        print(f"Error fetching running models from Ollama: {e}", file=sys.stderr)
-        return {}
-
 
 def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
     """Get model metadata from Ollama /api/show endpoint.
@@ -220,19 +199,18 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description='Sync Ollama models to LiteLLM config')
     parser.add_argument('--ollama-url',
-                       default='http://tuprpisrvp02.intra.leivo:7900',
-                       help='Ollama server URL (default: http://tuprpisrvp02.intra.leivo:7900)')
+                        default='http://tuprpisrvp02.intra.leivo:7900',
+                        help='Ollama server URL (default: http://tuprpisrvp02.intra.leivo:7900)')
     parser.add_argument('--config-file',
-                       default='litellm/config.yaml',
-                       help='Path to LiteLLM config file (default: litellm/config.yaml)')
+                        default='litellm/config.yaml',
+                        help='Path to LiteLLM config file (default: litellm/config.yaml)')
     parser.add_argument('--output',
-                       choices=['file', 'stdout'],
-                       default='file',
-                       help='Output destination (default: file)')
+                        choices=['file', 'stdout'],
+                        default='file',
+                        help='Output destination (default: file)')
 
     args = parser.parse_args()
 
-    # Get models from Ollama
     print(f"Fetching models from {args.ollama_url}...")
     models = get_ollama_models(args.ollama_url)
     if not models:
@@ -240,30 +218,26 @@ def main():
         sys.exit(1)
 
     print(f"Found {len(models)} models: {', '.join(models)}")
+    print("Fetching model details via /api/show...")
 
-    # Get running models with context sizes
-    print("Fetching running model details...")
-    running_models = get_ollama_running_models(args.ollama_url)
+    model_metadatas: list[ModelMetadata] = []
+    skipped: list[str] = []
 
-    # Build context size mapping
-    model_contexts = {}
-    for model in models:
-        if model in running_models:
-            model_contexts[model] = running_models[model]
+    for model_name in models:
+        metadata = get_model_info(args.ollama_url, model_name)
+        if metadata is None:
+            skipped.append(model_name)
         else:
-            print(f"Warning: Context size not found for {model}, using default 2048")
-            model_contexts[model] = 2048
+            model_metadatas.append(metadata)
 
-    # Output results
+    chat_count = sum(1 for m in model_metadatas if not m.is_embedding)
+    embedding_count = sum(1 for m in model_metadatas if m.is_embedding)
+
     if args.output == 'stdout':
-        # Print to stdout
-        for model in models:
-            context_size = model_contexts[model]
-            entry = generate_litellm_config_entry(model, args.ollama_url, context_size)
-            print(entry)
-            print()  # Blank line between entries
+        for metadata in model_metadatas:
+            entry = generate_litellm_config_entry(metadata, args.ollama_url)
+            print(yaml.dump([entry], default_flow_style=False), end="")
     else:
-        # Update config file
         config_path = Path(args.config_file)
         if not config_path.exists():
             print(f"Config file not found: {config_path}")
@@ -271,16 +245,19 @@ def main():
             if response.lower() != 'y':
                 print("Aborted", file=sys.stderr)
                 sys.exit(1)
-            # Create empty config
-            config = {'model_list': []}
             config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(config_path, 'w') as f:
-                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+                yaml.dump({'model_list': []}, f, sort_keys=False, default_flow_style=False)
             print(f"Created config file: {config_path}")
 
         print(f"Updating config file: {config_path}")
-        update_config_file(config_path, models, args.ollama_url, model_contexts)
+        update_config_file(config_path, model_metadatas, args.ollama_url)
         print("Config file updated successfully!")
+
+    print(f"Synced {len(model_metadatas)} models: {chat_count} chat, {embedding_count} embedding")
+    if skipped:
+        noun = "model" if len(skipped) == 1 else "models"
+        print(f"Skipped {len(skipped)} {noun} (API error): {', '.join(skipped)}")
 
 
 if __name__ == '__main__':
