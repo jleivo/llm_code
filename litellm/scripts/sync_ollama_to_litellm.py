@@ -4,6 +4,12 @@
 import re
 import sys
 import requests
+# use ruamel.yaml so we can preserve comments/formatting in config files
+try:
+    from ruamel.yaml import YAML
+except ImportError:  # pragma: no cover - tests install requirements
+    YAML = None
+
 import yaml
 import argparse
 from dataclasses import dataclass
@@ -177,40 +183,93 @@ def update_config_file(config_path: str, model_metadatas: list[ModelMetadata], a
     Returns:
         True if successful, False otherwise
     """
+    # we deliberately avoid yaml.safe_load/write when preserving comments is
+    # important. ruamel.yaml is able to keep comments and round-trip the file
+    # with minimal changes. if it's not installed we fall back to the existing
+    # behavior and warn the user.
     try:
+        if YAML is None:
+            print(
+                "Warning: ruamel.yaml not installed; config formatting may be lost",
+                file=sys.stderr,
+            )
+            # fallback to previous implementation
+            try:
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+            except FileNotFoundError:
+                config = {'model_list': []}
+
+            if 'model_list' not in config or config['model_list'] is None:
+                config['model_list'] = []
+
+            # Remove existing Ollama models (both ollama_chat/ and ollama/ prefixes)
+            non_ollama_models = []
+            for model in config['model_list']:
+                if not isinstance(model, dict):
+                    continue
+                if 'litellm_params' not in model:
+                    non_ollama_models.append(model)
+                    continue
+                if not isinstance(model['litellm_params'], dict):
+                    continue
+                model_str = model['litellm_params'].get('model', '')
+                if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
+                    continue
+                non_ollama_models.append(model)
+
+            new_entries = [
+                generate_litellm_config_entry(metadata, api_base)
+                for metadata in model_metadatas
+            ]
+
+            config['model_list'] = non_ollama_models + new_entries
+
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+
+            return True
+        # use ruamel to preserve comments/sequence order
+        ryaml = YAML()
+        ryaml.preserve_quotes = True
+        ryaml.width = 4096
+
         try:
             with open(config_path, 'r') as f:
-                config = yaml.safe_load(f) or {}
+                config = ryaml.load(f) or {}
         except FileNotFoundError:
             config = {'model_list': []}
 
         if 'model_list' not in config or config['model_list'] is None:
-            config['model_list'] = []
+            from ruamel.yaml.comments import CommentedSeq
 
-        # Remove existing Ollama models (both ollama_chat/ and ollama/ prefixes)
-        non_ollama_models = []
-        for model in config['model_list']:
-            if not isinstance(model, dict):
-                continue
-            if 'litellm_params' not in model:
-                non_ollama_models.append(model)
-                continue
-            if not isinstance(model['litellm_params'], dict):
-                continue
-            model_str = model['litellm_params'].get('model', '')
-            if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
-                continue
-            non_ollama_models.append(model)
+            config['model_list'] = CommentedSeq()
 
-        new_entries = [
-            generate_litellm_config_entry(metadata, api_base)
-            for metadata in model_metadatas
-        ]
+        # config['model_list'] may be a CommentedSeq already
+        existing = config['model_list']
+        # filter out ollama entries while preserving any non-dict items
+        new_list = []
+        for model in existing:
+            keep = True
+            if isinstance(model, dict):
+                lit = model.get('litellm_params')
+                if isinstance(lit, dict):
+                    model_str = lit.get('model', '')
+                    if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
+                        keep = False
+            if keep:
+                new_list.append(model)
+        # build new entries
+        added = [generate_litellm_config_entry(metadata, api_base)
+                 for metadata in model_metadatas]
+        new_list.extend(added)
 
-        config['model_list'] = non_ollama_models + new_entries
+        # replace contents of the sequence in-place to keep comments attached
+        config['model_list'].clear()
+        config['model_list'].extend(new_list)
 
         with open(config_path, 'w') as f:
-            yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+            ryaml.dump(config, f)
 
         return True
     except Exception as e:

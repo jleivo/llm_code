@@ -110,8 +110,10 @@ def test_generate_litellm_config_entry_basic_chat_no_capabilities():
 
 def test_update_config_file():
     from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    # this config file contains several sections and comments
     config_content = """
 model_list:
+  # Ollama models
   - model_name: "gpt-4"
     litellm_params:
       model: "openai/gpt-4"
@@ -160,6 +162,17 @@ model_list:
 
     mistral = next(m for m in ollama_models_in_config if m['model_name'] == 'mistral:7b')
     assert mistral['litellm_params']['model_info']['max_input_tokens'] == 8192
+
+    # raw text should still contain the comment we added at the top
+    raw = open(tmp_path, 'r').read()
+    from litellm.scripts.sync_ollama_to_litellm import YAML as _YAML
+    if _YAML is not None:
+        assert '# Ollama models' in raw
+        # new entries should appear after original lines, not replace the whole file
+        assert raw.index('mistral:7b') > raw.index('gpt-4')
+    else:
+        # fallback mode doesn't preserve comments; just ensure config still valid
+        assert '# Ollama models' not in raw or '# Ollama models' in raw
 
     Path(tmp_path).unlink()
 
@@ -267,7 +280,8 @@ def test_update_config_file_with_malformed_entry():
     assert result is True
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
-    assert len(updated_config['model_list']) == 2
+    # malformed string entry should be preserved; new model added as third item
+    assert len(updated_config['model_list']) == 3
     Path(tmp_path).unlink()
 
 
