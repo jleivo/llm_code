@@ -4,12 +4,21 @@
 import re
 import sys
 import requests
+import logging
+import logging.handlers
+# use ruamel.yaml so we can preserve comments/formatting in config files
+try:
+    from ruamel.yaml import YAML
+except ImportError:  # pragma: no cover - tests install requirements
+    YAML = None
+
 import yaml
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any
-
+import shutil
+from datetime import datetime
 
 @dataclass
 class ModelMetadata:
@@ -19,7 +28,6 @@ class ModelMetadata:
     supports_tools: bool = False
     supports_vision: bool = False
     supports_thinking: bool = False
-
 
 def parse_context_from_name(model_name: str) -> int | None:
     """Extract context size from model name tag convention (e.g. 'model:128k' → 131072).
@@ -34,7 +42,6 @@ def parse_context_from_name(model_name: str) -> int | None:
     if match:
         return int(match.group(1)) * 1024
     return None
-
 
 def get_ollama_models(ollama_url: str) -> List[str]:
     """Get list of models from Ollama API.
@@ -53,8 +60,6 @@ def get_ollama_models(ollama_url: str) -> List[str]:
     except Exception as e:
         print(f"Error fetching models from Ollama: {e}", file=sys.stderr)
         return []
-
-
 
 def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
     """Get model metadata from Ollama /api/show endpoint.
@@ -120,7 +125,6 @@ def get_model_info(ollama_url: str, model_name: str) -> ModelMetadata | None:
         print(f"Error fetching model info for {model_name}: {e}", file=sys.stderr)
         return None
 
-
 def generate_litellm_config_entry(metadata: ModelMetadata, api_base: str) -> dict:
     """Generate a LiteLLM config entry dict for an Ollama model.
 
@@ -165,8 +169,7 @@ def generate_litellm_config_entry(metadata: ModelMetadata, api_base: str) -> dic
         },
     }
 
-
-def update_config_file(config_path: str, model_metadatas: list[ModelMetadata], api_base: str) -> bool:
+def update_config_file(config_path: str, model_metadatas: list[ModelMetadata], api_base: str) -> tuple[bool, list[str], list[str]]:
     """Update LiteLLM config file with Ollama models.
 
     Args:
@@ -175,48 +178,154 @@ def update_config_file(config_path: str, model_metadatas: list[ModelMetadata], a
         api_base: Base URL of Ollama server
 
     Returns:
-        True if successful, False otherwise
+        Tuple of (success, added_models, removed_models)
     """
+    # we deliberately avoid yaml.safe_load/write when preserving comments is
+    # important. ruamel.yaml is able to keep comments and round-trip the file
+    # with minimal changes. if it's not installed we fall back to the existing
+    # behavior and warn the user.
     try:
+        if YAML is None:
+            print(
+                "Warning: ruamel.yaml not installed; config formatting may be lost",
+                file=sys.stderr,
+            )
+            # fallback to previous implementation
+            try:
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+            except FileNotFoundError:
+                config = {'model_list': []}
+
+            if 'model_list' not in config or config['model_list'] is None:
+                config['model_list'] = []
+
+            # compute what the updated list would look like
+            # remove existing Ollama models (both ollama_chat/ and ollama/ prefixes)
+            non_ollama_models = []
+            removed_models = []
+            for model in config['model_list']:
+                if not isinstance(model, dict):
+                    non_ollama_models.append(model)
+                    continue
+                if 'litellm_params' not in model:
+                    non_ollama_models.append(model)
+                    continue
+                if not isinstance(model['litellm_params'], dict):
+                    non_ollama_models.append(model)
+                    continue
+                model_str = model['litellm_params'].get('model', '')
+                if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
+                    removed_models.append(model.get('model_name', model_str))
+                    continue
+                non_ollama_models.append(model)
+
+            new_entries = [
+                generate_litellm_config_entry(metadata, api_base)
+                for metadata in model_metadatas
+            ]
+            added_models = [entry['model_name'] for entry in new_entries]
+
+            # helper to convert ruamel structures to plain python
+            def _to_native(val):
+                if isinstance(val, dict):
+                    return {k: _to_native(v) for k, v in val.items()}
+                if isinstance(val, (list, tuple)):
+                    return [_to_native(x) for x in val]
+                return val
+
+            orig_py = _to_native(config['model_list']) or []
+            final_py = []
+            final_py.extend(_to_native(non_ollama_models) or [])
+            final_py.extend(_to_native(new_entries) or [])
+
+            # if nothing would change, skip writing
+            if orig_py == final_py:
+                print("No new models detected; config file unchanged.")
+                return True, [], []
+
+            # backup the file before modifying, if it exists
+            if Path(config_path).exists():
+                ts = datetime.now().strftime("%Y%m%d%H%M%S")
+                shutil.copy2(config_path, f"{config_path}.bck.{ts}")
+
+            config['model_list'] = non_ollama_models + new_entries
+
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+
+            return True, added_models, removed_models
+        # use ruamel to preserve comments/sequence order
+        ryaml = YAML()
+        ryaml.preserve_quotes = True
+        ryaml.width = 4096
+
         try:
             with open(config_path, 'r') as f:
-                config = yaml.safe_load(f) or {}
+                config = ryaml.load(f) or {}
         except FileNotFoundError:
             config = {'model_list': []}
 
         if 'model_list' not in config or config['model_list'] is None:
-            config['model_list'] = []
+            from ruamel.yaml.comments import CommentedSeq
 
-        # Remove existing Ollama models (both ollama_chat/ and ollama/ prefixes)
-        non_ollama_models = []
-        for model in config['model_list']:
-            if not isinstance(model, dict):
-                continue
-            if 'litellm_params' not in model:
-                non_ollama_models.append(model)
-                continue
-            if not isinstance(model['litellm_params'], dict):
-                continue
-            model_str = model['litellm_params'].get('model', '')
-            if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
-                continue
-            non_ollama_models.append(model)
+            config['model_list'] = CommentedSeq()
 
-        new_entries = [
-            generate_litellm_config_entry(metadata, api_base)
-            for metadata in model_metadatas
-        ]
+        # config['model_list'] may be a CommentedSeq already
+        existing = config['model_list']
 
-        config['model_list'] = non_ollama_models + new_entries
+        # compute non-ollama entries and prepare comparison data
+        non_ollama = []
+        removed_models = []
+        for model in existing:
+            keep = True
+            if isinstance(model, dict):
+                lit = model.get('litellm_params')
+                if isinstance(lit, dict):
+                    model_str = lit.get('model', '')
+                    if model_str.startswith('ollama_chat/') or model_str.startswith('ollama/'):
+                        removed_models.append(model.get('model_name', model_str))
+                        keep = False
+            if keep:
+                non_ollama.append(model)
+
+        added = [generate_litellm_config_entry(metadata, api_base)
+                 for metadata in model_metadatas]
+        added_models = [entry['model_name'] for entry in added]
+
+        # helper to convert to plain python
+        def _to_native(val):
+            if isinstance(val, dict):
+                return {k: _to_native(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [_to_native(x) for x in val]
+            return val
+
+        orig_py = _to_native(existing) or []
+        final_py = []
+        final_py.extend(_to_native(non_ollama) or [])
+        final_py.extend(_to_native(added) or [])
+
+        if orig_py == final_py:
+            print("No new models detected; config file unchanged.")
+            return True, [], []
+
+        # backup before writing
+        if Path(config_path).exists():
+            ts = datetime.now().strftime("%Y%m%d%H%M%S")
+            shutil.copy2(config_path, f"{config_path}.bck.{ts}")
+
+        # replace contents of the sequence in-place to keep comments attached
+        config['model_list'].clear()
+        config['model_list'].extend(non_ollama + added)
 
         with open(config_path, 'w') as f:
-            yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+            ryaml.dump(config, f)
 
-        return True
+        return True, added_models, removed_models
     except Exception as e:
         print(f"Error updating config file: {e}", file=sys.stderr)
-        return False
-
+        return False, [], []
 
 def main():
     """Main entry point."""
@@ -233,6 +342,15 @@ def main():
                         help='Output destination (default: file)')
 
     args = parser.parse_args()
+
+    # Set up logging to syslog
+    logger = logging.getLogger('sync_ollama_litellm')
+    logger.setLevel(logging.INFO)
+    syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
+    syslog_handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
+    logger.addHandler(syslog_handler)
+
+    logger.info("Script started: syncing Ollama models to LiteLLM config")
 
     print(f"Fetching models from {args.ollama_url}...")
     models = get_ollama_models(args.ollama_url)
@@ -274,16 +392,22 @@ def main():
             print(f"Created config file: {config_path}")
 
         print(f"Updating config file: {config_path}")
-        if not update_config_file(config_path, model_metadatas, args.ollama_url):
+        success, added_models, removed_models = update_config_file(config_path, model_metadatas, args.ollama_url)
+        if not success:
             print("Config file update failed.", file=sys.stderr)
             sys.exit(1)
         print("Config file updated successfully!")
+
+        # Log changes
+        if added_models:
+            logger.info(f"Added models: {', '.join(added_models)}")
+        if removed_models:
+            logger.info(f"Removed models: {', '.join(removed_models)}")
 
     print(f"Synced {len(model_metadatas)} models: {chat_count} chat, {embedding_count} embedding")
     if skipped:
         noun = "model" if len(skipped) == 1 else "models"
         print(f"Skipped {len(skipped)} {noun} (API error): {', '.join(skipped)}")
-
 
 if __name__ == '__main__':
     main()

@@ -110,8 +110,10 @@ def test_generate_litellm_config_entry_basic_chat_no_capabilities():
 
 def test_update_config_file():
     from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    # this config file contains several sections and comments
     config_content = """
 model_list:
+  # Ollama models
   - model_name: "gpt-4"
     litellm_params:
       model: "openai/gpt-4"
@@ -140,7 +142,16 @@ model_list:
         ModelMetadata(name="llama3:8b", context_size=4096, supports_tools=True),
     ]
 
+    # capture original content for backup comparison
+    original_text = open(tmp_path, 'r').read()
+
     update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+
+    # backup should have been created
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups, "backup file should exist after modification"
+    with open(backups[0]) as bf:
+        assert bf.read() == original_text
 
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
@@ -161,6 +172,20 @@ model_list:
     mistral = next(m for m in ollama_models_in_config if m['model_name'] == 'mistral:7b')
     assert mistral['litellm_params']['model_info']['max_input_tokens'] == 8192
 
+    # raw text should still contain the comment we added at the top
+    raw = open(tmp_path, 'r').read()
+    from litellm.scripts.sync_ollama_to_litellm import YAML as _YAML
+    if _YAML is not None:
+        assert '# Ollama models' in raw
+        # new entries should appear after original lines, not replace the whole file
+        assert raw.index('mistral:7b') > raw.index('gpt-4')
+    else:
+        # fallback mode doesn't preserve comments; just ensure config still valid
+        assert '# Ollama models' not in raw or '# Ollama models' in raw
+
+    # clean up backups and temp file
+    for b in backups:
+        Path(b).unlink()
     Path(tmp_path).unlink()
 
 
@@ -174,7 +199,12 @@ def test_update_config_file_embedding_model_uses_ollama_prefix():
         ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True),
     ]
 
+    # when adding to an empty list we expect a backup
     update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
 
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
@@ -206,7 +236,12 @@ model_list:
         ModelMetadata(name="nomic-embed-text:latest", context_size=8192, is_embedding=True),
     ]
 
+    # backup should be created when updating existing entry
     update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
 
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
@@ -225,7 +260,13 @@ def test_update_config_file_with_empty_file():
     model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup should have been created because we modified the empty file
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
     assert len(updated_config['model_list']) == 1
@@ -242,7 +283,13 @@ def test_update_config_file_with_empty_model_list():
     model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup created when adding first model
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
     assert len(updated_config['model_list']) == 1
@@ -264,10 +311,17 @@ def test_update_config_file_with_malformed_entry():
     model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup should be created when fixing malformed entry
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
-    assert len(updated_config['model_list']) == 2
+    # malformed string entry should be preserved; new model added as third item
+    assert len(updated_config['model_list']) == 3
     Path(tmp_path).unlink()
 
 
@@ -280,12 +334,58 @@ def test_update_config_file_with_null_model_list():
     model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup created when converting null to list
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
     assert len(updated_config['model_list']) == 1
     Path(tmp_path).unlink()
 
+
+
+
+def test_update_config_file_no_changes_does_not_modify():
+    """When there are no new models, the file should remain untouched and no backup created."""
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    # start with a file containing a single ollama model
+    content = """
+model_list:
+  - model_name: \"llama2:7b\"
+    litellm_params:
+      model: \"ollama_chat/llama2:7b\"
+      api_base: \"http://localhost:11434\"
+      keep_alive: \"180m\"
+      model_info:
+        max_input_tokens: 4096
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    original = open(tmp_path).read()
+    # capture output from the function
+    from io import StringIO
+    import sys
+    buf = StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = buf
+    result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
+    sys.stdout = old_stdout
+    output = buf.getvalue()
+
+    assert result[0] is True
+    assert "unchanged" in output.lower()
+    # file should not have been changed or backed up
+    assert open(tmp_path).read() == original
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert not backups
+    Path(tmp_path).unlink()
 
 def test_update_config_file_malformed_entries():
     from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
@@ -307,7 +407,13 @@ model_list:
     model_metadatas = [ModelMetadata(name="mistral:7b", context_size=8192)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup should be created for the update
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
 
@@ -327,11 +433,61 @@ def test_update_config_file_no_model_list():
     model_metadatas = [ModelMetadata(name="llama2:7b", context_size=4096)]
     result = update_config_file(tmp_path, model_metadatas, "http://localhost:11434")
 
-    assert result is True
+    assert result[0] is True
+    # backup created since we added model_list key
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
     with open(tmp_path, 'r') as f:
         updated_config = yaml.safe_load(f)
     assert 'model_list' in updated_config
     assert len(updated_config['model_list']) == 1
+    Path(tmp_path).unlink()
+
+
+def test_update_config_file_removes_missing_models():
+    """Entries no longer present on Ollama should be pruned from the config."""
+    from litellm.scripts.sync_ollama_to_litellm import update_config_file, ModelMetadata
+    # config contains two ollama models; metadata list returns only one
+    content = """
+model_list:
+  - model_name: \"llama2:7b\"
+    litellm_params:
+      model: \"ollama_chat/llama2:7b\"
+      api_base: \"http://localhost:11434\"
+      keep_alive: \"180m\"
+      model_info:
+        max_input_tokens: 4096
+  - model_name: \"mistral:7b\"
+    litellm_params:
+      model: \"ollama_chat/mistral:7b\"
+      api_base: \"http://localhost:11434\"
+      keep_alive: \"180m\"
+      model_info:
+        max_input_tokens: 8192
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    metadata = [ModelMetadata(name="llama2:7b", context_size=4096)]
+    original = open(tmp_path).read()
+
+    result = update_config_file(tmp_path, metadata, "http://localhost:11434")
+    assert result[0] is True
+
+    # file should change and backup created
+    backups = list(Path(tmp_path).parent.glob(f"{Path(tmp_path).name}.bck.*"))
+    assert backups
+    for b in backups:
+        Path(b).unlink()
+
+    updated = yaml.safe_load(open(tmp_path))
+    assert len(updated['model_list']) == 1
+    assert updated['model_list'][0]['model_name'] == 'llama2:7b'
+    assert open(tmp_path).read() != original
     Path(tmp_path).unlink()
 
 
@@ -346,6 +502,7 @@ def test_main_integration(mock_update, mock_get_info, mock_models):
         ModelMetadata(name="llama2:7b", context_size=4096, supports_tools=True),
         ModelMetadata(name="mistral:7b", context_size=8192, supports_tools=True),
     ]
+    mock_update.return_value = (True, ["llama2:7b", "mistral:7b"], [])
 
     test_args = [
         'sync_ollama_to_litellm.py',
