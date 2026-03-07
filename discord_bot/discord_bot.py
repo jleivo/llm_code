@@ -172,6 +172,8 @@ async def respond(message: discord.Message, source: str) -> None:
 def check_forget_command(message: discord.Message, source: str) -> bool:
     """Return True and clear history if message contains 'forget' command."""
     words = message.content.split()
+    if not words:
+        return False
     # command is either the first or second word (after bot mention)
     cmd = words[1] if len(words) > 1 else words[0]
     if "forget" in cmd.lower():
