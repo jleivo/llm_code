@@ -117,6 +117,11 @@ def fetch_url_text(url: str) -> str:
     """Scrape readable text from a URL."""
     try:
         resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        if "text/html" not in content_type and "text/plain" not in content_type:
+            log.info("Skipping non-HTML URL %s (Content-Type: %s)", url, content_type)
+            return ""
         soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style"]):
             tag.extract()
@@ -133,12 +138,21 @@ def build_user_message(user_text: str) -> str:
     urls = extract_urls(user_text)
     if not urls:
         return user_text
-    extra = "".join(fetch_url_text(u) for u in urls)
-    return user_text + "\n\nContent from URL:\n" + extra
+    parts = []
+    for url in urls:
+        text = fetch_url_text(url)
+        if text:
+            parts.append(f"[{url}]:\n{text[:8000]}")
+    if not parts:
+        return user_text
+    return user_text + "\n\nContent from URLs:\n" + "\n\n".join(parts)
 
 
 async def send_response(channel, text: str) -> None:
     """Send text to a Discord channel, chunking at 1800 chars if needed."""
+    text = text.strip()
+    if not text:
+        return
     max_len = 1800
-    for i in range(0, max(1, len(text)), max_len):
-        await channel.send(text[i:i + max_len].strip())
+    for i in range(0, len(text), max_len):
+        await channel.send(text[i:i + max_len])
