@@ -47,7 +47,7 @@ class ConversationHistory:
             log.info("History expired for %s", source)
             self._store.pop(source, None)
             return []
-        return entry["messages"]
+        return list(entry["messages"])
 
     def update(self, source: str, messages: list[dict]) -> None:
         self._store[source] = {"updated": time.time(), "messages": messages}
