@@ -156,3 +156,25 @@ async def send_response(channel, text: str) -> None:
     max_len = 1800
     for i in range(0, len(text), max_len):
         await channel.send(text[i:i + max_len])
+
+
+async def respond(message: discord.Message, source: str) -> None:
+    """Build LLM input, generate response, send it, update history."""
+    user_text = build_user_message(message.content)
+    msgs = history.get(source)
+    msgs = msgs + [{"role": "user", "content": user_text}]
+    reply = generate_response(msgs)
+    await send_response(message.channel, reply)
+    msgs = msgs + [{"role": "assistant", "content": reply}]
+    history.update(source, msgs)
+
+
+def check_forget_command(message: discord.Message, source: str) -> bool:
+    """Return True and clear history if message contains 'forget' command."""
+    words = message.content.split()
+    # command is either the first or second word (after bot mention)
+    cmd = words[1] if len(words) > 1 else words[0]
+    if "forget" in cmd.lower():
+        history.clear(source)
+        return True
+    return False
