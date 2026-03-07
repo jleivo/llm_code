@@ -90,3 +90,55 @@ def get_channel_state(channel_id: str) -> ChannelState:
     if channel_id not in channel_states:
         channel_states[channel_id] = ChannelState()
     return channel_states[channel_id]
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def generate_response(messages: list[dict]) -> str:
+    """Call the LLM with system prompt + message history. Returns response text."""
+    full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+    try:
+        resp = llm.chat.completions.create(
+            model=MODEL,
+            messages=full_messages,
+        )
+        return resp.choices[0].message.content
+    except Exception:
+        log.error("LLM call failed:\n%s", traceback.format_exc())
+        return "Back end missing"
+
+
+def extract_urls(text: str) -> list[str]:
+    pattern = r'https?://[^\s]+'
+    return re.findall(pattern, text)
+
+
+def fetch_url_text(url: str) -> str:
+    """Scrape readable text from a URL."""
+    try:
+        resp = requests.get(url, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style"]):
+            tag.extract()
+        lines = (line.strip() for line in soup.get_text().splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        return "\n".join(c for c in chunks if c)
+    except Exception:
+        log.warning("Failed to fetch %s:\n%s", url, traceback.format_exc())
+        return ""
+
+
+def build_user_message(user_text: str) -> str:
+    """Append scraped URL content to the user message if URLs are present."""
+    urls = extract_urls(user_text)
+    if not urls:
+        return user_text
+    extra = "".join(fetch_url_text(u) for u in urls)
+    return user_text + "\n\nContent from URL:\n" + extra
+
+
+async def send_response(channel, text: str) -> None:
+    """Send text to a Discord channel, chunking at 1800 chars if needed."""
+    max_len = 1800
+    for i in range(0, max(1, len(text)), max_len):
+        await channel.send(text[i:i + max_len].strip())
