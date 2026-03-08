@@ -1,47 +1,103 @@
-# Jules CLI Tool
+# Jules - AI Coding Agent Integration
 
-This tool allows agentic systems (like Openclaw) to collaborate with the Jules AI agent via its REST API.
+Library and CLI for collaborating with the Jules AI agent. Designed for both
+programmatic use (from Claude Code skills) and direct command-line usage.
 
 ## Setup
 
-1.  **Jules API Key**: Create a file named `jules_api_key.txt` in the same directory as the script and paste your Jules API key into it. You can get your API key from [jules.google.com/settings](https://jules.google.com/settings).
-2.  **GitHub Token**: For the `merge` command, you need a GitHub Personal Access Token.
-    *   **Recommended**: Use a **Fine-grained personal access token** for maximum security.
-    *   **Permissions**:
-        *   **Repository access**: Only select `jleivo/Claw_jules_collaboration`.
-        *   **Permissions**: `Repository permissions` -> `Pull requests`: Read and write.
-    *   Save this token in a file named `github_token.txt` or set the `GITHUB_TOKEN` environment variable.
+1. **Jules API Key**: Create `jules_api_key.txt` in the repo root with your
+   key from [jules.google.com/settings](https://jules.google.com/settings).
+
+2. **GitHub Token**: For auto-merge, set `GITHUB_TOKEN` env var or create
+   `github_token.txt`. Needs Pull Request read/write permission on the repo.
+
+3. **Install dependencies**: `pip install -r jules/requirements.txt`
 
 ## Usage
 
-### Create a new session
-Starts a new task for Jules.
-```bash
-./jules_cli.py create --prompt "Fix the bug in the authentication logic" --title "Bugfix Auth"
+### As Claude Code skill (/jules)
+
+The primary way to use Jules. From Claude Code:
+
+```
+/jules docs/plans/2026-03-08-my-feature.md
 ```
 
-### Chat with Jules
-Enters an interactive REPL loop to discuss the task with Jules.
-```bash
-./jules_cli.py chat --session-id <SESSION_ID>
+This parses the plan, launches Jules sessions for each task, and enters
+a monitoring dashboard. See the skill docs for details.
+
+### Plan file format
+
+Tasks in plan files support `executor` and `depends` metadata:
+
+```markdown
+### Task 1: Add authentication
+- executor: jules       (default, can be omitted)
+- depends: none         (no dependencies, can run in parallel)
+
+### Task 2: Update config
+- executor: claude      (run via Claude subagent instead)
+- depends: [1]          (wait for task 1)
 ```
 
-### Check status
-Shows the current state of the session and the latest activities.
+### CLI commands
+
+Direct CLI usage:
+
 ```bash
-./jules_cli.py status --session-id <SESSION_ID>
+# Create a session
+./jules_cli.py create --prompt "Fix the auth bug" --title "Bugfix"
+
+# Interactive chat
+./jules_cli.py chat --session-id <ID>
+
+# Check status
+./jules_cli.py status --session-id <ID>
+
+# Merge completed PR
+./jules_cli.py merge --session-id <ID>
 ```
 
-### Merge the results
-Once the session is `COMPLETED` and a Pull Request has been created, use this command to merge it.
-```bash
-./jules_cli.py merge --session-id <SESSION_ID>
+### Python library
+
+```python
+from jules import JulesSession, detect_github_repo
+
+owner, repo = detect_github_repo()
+session = JulesSession.create(
+    prompt="Implement feature X",
+    owner=owner,
+    repo=repo,
+)
+print(f"Session: {session.session_id}")
+print(f"Status: {session.status()}")
 ```
 
-## Integration with Orchestrators
+## Configuration
 
-Orchestrators should:
-1.  Call `create` and store the `SESSION_ID`.
-2.  Optionally call `chat` (or implement their own messaging logic using the API) to provide further instructions.
-3.  Poll `status` until the state is `COMPLETED`.
-4.  Call `merge` if the work is acceptable.
+Edit `jules/jules_config.ini`:
+
+```ini
+[jules]
+max_concurrent_sessions = 3    ; parallel Jules sessions
+poll_interval_seconds = 30     ; dashboard refresh rate
+default_executor = jules       ; default for tasks without executor:
+auto_merge = true              ; auto-merge completed PRs
+```
+
+## File Structure
+
+```
+jules/
+├── jules.py              # Library (JulesSession, load_config, etc.)
+├── jules_cli.py          # CLI wrapper
+├── jules_config.ini      # Configuration
+├── orchestrator.py       # Task orchestration and dashboard
+├── plan_parser.py        # Plan file parser
+├── requirements.txt      # Dependencies
+├── test_jules.py         # Library tests
+├── test_jules_cli.py     # CLI tests
+├── test_orchestrator.py  # Orchestrator tests
+├── test_plan_parser.py   # Parser tests
+└── README_JULES_CLI.md   # This file
+```
