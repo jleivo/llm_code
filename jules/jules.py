@@ -214,6 +214,6 @@ class JulesSession:
         }
 
         response = requests.put(url, headers=headers)
-        if response.status_code == 200:
+        if response.ok:
             return True
         raise JulesError(f"Failed to merge PR: {response.status_code} — {response.text}")
