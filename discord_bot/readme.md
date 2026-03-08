@@ -1,62 +1,75 @@
-# Discord bot
+# Discord Bot
 
-Simple code to run an bot powered by LLM in discord.
+LLM-powered Discord bot with a sarcastic personality. Responds when @mentioned or in DMs,
+and spontaneously joins channel conversations every 5–15 messages for a few rounds.
 
-## features
+## Features
 
-- Has 15 minute long chat history. If a discussion starts after 15 minutes of silence, it starts from zero.
-- Has the magic word "forget", which resets the chat memmory.
-- Can do private & channel discussions. Has per person chat history.
-- Parses URLs posted in messages. Can be used to summarize stuff.
+- Responds to @mentions and private DMs
+- Spontaneously joins channel discussions (configurable frequency and active rounds)
+- 15-minute conversation history per source (configurable)
+- `forget` command to reset history
+- URL parsing — paste a link and the bot will read and comment on it
+- Works with any OpenAI-compatible API (Ollama, LiteLLM, etc.)
 
 ## Installation
 
-### application user
+### System user
 
 ```bash
-sudo adduser adduser --system --home /srv/discord_bot/ lunatic
+sudo adduser --system --home /srv/discord_bot lunatic
 sudo addgroup --system lunatic
 ```
+
+### Dependencies
+
+```bash
+python3 -m venv /srv/discord_bot/.venv && source /srv/discord_bot/.venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Configuration
+
+Edit `config.ini` with your settings:
+
+| Key | Description |
+|-----|-------------|
+| `api.base_url` | OpenAI-compatible API base URL (e.g. `http://host:11434/v1` for Ollama) |
+| `api.model` | Model name to use |
+| `bot.system_prompt` | System prompt defining bot personality |
+| `bot.spontaneous_min/max` | Range for messages between spontaneous interjections |
+| `bot.active_rounds` | How many reply exchanges to stay active after interjecting |
+
 ### Discord token
 
-The application needs a Discord token, which should be stored in .env-file, or 
-preferably provided on the fly when the process is started
+Create `.env` next to `discord_bot.py`:
 
-```text
-DISCORD_TOKEN=
 ```
-Token you can get by creating a Discord app. Google for guidance on this area.
+DISCORD_TOKEN=your_token_here
+```
 
-### log-file
+### Logging
 
-The wrapper function redirects the python output to /var/log/discord_bot.log -file by default.
+The bot logs to syslog via the `LOCAL0` facility. Configure rsyslog to route those entries to a dedicated file:
 
 ```bash
-sudo touch /var/log/discord_bot.log
-sudo chown lunatic:lunatic /var/log/discord_bot.log
-sudo chmod 640 /var/log/discord_bot.log
-sudo apt-get install logrotate
+sudo cp dependencies/rsyslog/discord_bot.conf /etc/rsyslog.d/discord_bot.conf
+sudo systemctl restart rsyslog
 ```
-copy the `logrotate/discord_bot` file to `/etc/logrotate.d/discord_bot`
 
-### Ollama model
-
-you need to import the ollama model file `Lunatic_leivo_modelfile'  lunatic-leivo-model
+Set up log rotation:
 
 ```bash
-ollama create lunatic-leivo-model --file Lunatic_leivoZZ.modelfile
+sudo cp dependencies/logrotate/discord_bot /etc/logrotate.d/discord_bot
 ```
 
-### Systemd configuration file
+### Systemd
 
-copy lunatic.service to `/usr/lib/systemd/system/`
-
-enable systemd service
 ```bash
-sudo systemctl enable lunatic.service
+sudo cp dependencies/lunatic.service /usr/lib/systemd/system/
+sudo systemctl enable --now lunatic.service
 ```
 
-## Known issues
+## Known Issues
 
-- Comprehensive error handling is missing.
-- 
+- URL scraping has no size limit; very large pages may slow responses

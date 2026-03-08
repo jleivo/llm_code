@@ -8,7 +8,7 @@ WorkingDirectory=/srv/discord_bot
 User=lunatic
 Group=lunatic
 Type=simple
-ExecStart=/srv/discord_bot/lunatic_wrapper.sh
+ExecStart=/srv/discord_bot/.venv/bin/python3 /srv/discord_bot/discord_bot.py
 
 [Install]
 WantedBy=multi-user.target

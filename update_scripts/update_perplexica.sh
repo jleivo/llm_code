@@ -39,6 +39,7 @@ echo "▶️ Starting new container ..."
 docker run -d --name "$CONTAINER_NAME" \
     -p 5000:3000\
     -v perplexica-data:/home/perplexica/data \
+    --restart unless-stopped \
     "$IMG"
 
 echo "✅ Done."

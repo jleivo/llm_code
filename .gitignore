@@ -3,6 +3,9 @@ openai-env
 /portal/portal
 .venv
 __pycache__/
-*.pyc
-jules_api_key.txt
+ules_api_key.txt
 github_token.txt
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
