@@ -1,79 +1,71 @@
 import pytest
-import requests_mock
-from jules_cli import create_session, get_session, list_activities, FIXED_REPO, JULES_API_BASE, get_all_activities
+from unittest.mock import patch, MagicMock
+import sys
 import os
-import json
 
-# Mock the API key file
-@pytest.fixture(autouse=True)
-def mock_api_key(monkeypatch):
-    def mock_get_key():
-        return "fake-api-key"
-    monkeypatch.setattr("jules_cli.get_jules_api_key", mock_get_key)
+# Add the jules directory to path so jules_cli can be imported directly
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def test_create_session(requests_mock):
-    mock_response = {
-        "id": "session-123",
-        "name": "sessions/session-123",
-        "url": "https://jules.google.com/session/session-123"
-    }
-    requests_mock.post(f"{JULES_API_BASE}/sessions", json=mock_response)
+from jules_cli import main
 
-    result = create_session("Test prompt", "Test title")
 
-    assert result["id"] == "session-123"
-    assert requests_mock.called
-    history = requests_mock.request_history[0]
-    assert history.json()["prompt"] == "Test prompt"
-    assert history.json()["sourceContext"]["source"] == FIXED_REPO
+def test_cli_create(capsys):
+    """CLI create command uses JulesSession.create."""
+    mock_session = MagicMock()
+    mock_session.session_id = "session-123"
+    mock_session.url = "https://jules.google.com/session/session-123"
 
-def test_get_session(requests_mock):
-    mock_response = {
-        "id": "session-123",
-        "state": "COMPLETED",
-        "outputs": [
-            {
-                "pullRequest": {"url": "https://github.com/jleivo/repo/pull/1"}
-            }
-        ]
-    }
-    requests_mock.get(f"{JULES_API_BASE}/sessions/session-123", json=mock_response)
+    with patch("jules_cli.JulesSession") as MockSession:
+        MockSession.create.return_value = mock_session
+        with patch("sys.argv", ["jules_cli.py", "create", "--prompt", "Fix bug"]):
+            main()
 
-    result = get_session("session-123")
-    assert result["state"] == "COMPLETED"
-    assert result["outputs"][0]["pullRequest"]["url"] == "https://github.com/jleivo/repo/pull/1"
+    MockSession.create.assert_called_once_with("Fix bug", "Task via Jules CLI")
+    captured = capsys.readouterr()
+    assert "session-123" in captured.out
 
-def test_get_all_activities_pagination(requests_mock):
-    # Page 1
-    requests_mock.get(
-        f"{JULES_API_BASE}/sessions/session-123/activities?pageSize=50",
-        json={
-            "activities": [{"id": "act1"}],
-            "nextPageToken": "token1"
-        }
-    )
-    # Page 2
-    requests_mock.get(
-        f"{JULES_API_BASE}/sessions/session-123/activities?pageSize=50&pageToken=token1",
-        json={
-            "activities": [{"id": "act2"}]
-        }
-    )
 
-    activities = get_all_activities("session-123")
-    assert len(activities) == 2
-    assert activities[0]["id"] == "act1"
-    assert activities[1]["id"] == "act2"
+def test_cli_status(capsys):
+    """CLI status command prints session state."""
+    mock_session = MagicMock()
+    mock_session.status.return_value = "RUNNING"
+    mock_session.get_activities.return_value = [
+        {"id": "act1", "originator": "agent", "description": "Working..."}
+    ]
+    mock_session.get_session_data.return_value = {"state": "RUNNING", "outputs": []}
 
-def test_github_merge_pr(requests_mock, monkeypatch):
-    monkeypatch.setattr("jules_cli.get_github_token", lambda: "fake-token")
+    with patch("jules_cli.JulesSession") as MockSession:
+        MockSession.return_value = mock_session
+        with patch("sys.argv", ["jules_cli.py", "status", "--session-id", "session-123"]):
+            main()
 
-    pr_url = "https://github.com/jleivo/Claw_jules_collaboration/pull/123"
-    requests_mock.put("https://api.github.com/repos/jleivo/Claw_jules_collaboration/pulls/123/merge", status_code=200)
+    captured = capsys.readouterr()
+    assert "RUNNING" in captured.out
 
-    from jules_cli import github_merge_pr
-    github_merge_pr(pr_url)
 
-    assert requests_mock.called
-    assert requests_mock.request_history[0].url == "https://api.github.com/repos/jleivo/Claw_jules_collaboration/pulls/123/merge"
-    assert requests_mock.request_history[0].method == "PUT"
+def test_cli_merge_completed(capsys):
+    """CLI merge command merges when session is COMPLETED."""
+    mock_session = MagicMock()
+    mock_session.status.return_value = "COMPLETED"
+    mock_session.merge_pr.return_value = True
+
+    with patch("jules_cli.JulesSession") as MockSession:
+        MockSession.return_value = mock_session
+        with patch("sys.argv", ["jules_cli.py", "merge", "--session-id", "session-123"]):
+            main()
+
+    mock_session.merge_pr.assert_called_once()
+    captured = capsys.readouterr()
+    assert "merged" in captured.out.lower() or "Successfully" in captured.out
+
+
+def test_cli_merge_not_completed():
+    """CLI merge command exits with error when session not COMPLETED."""
+    mock_session = MagicMock()
+    mock_session.status.return_value = "RUNNING"
+
+    with patch("jules_cli.JulesSession") as MockSession:
+        MockSession.return_value = mock_session
+        with patch("sys.argv", ["jules_cli.py", "merge", "--session-id", "session-123"]):
+            with pytest.raises(SystemExit):
+                main()
