@@ -17,13 +17,14 @@ and spontaneously joins channel conversations every 5–15 messages for a few ro
 ### System user
 
 ```bash
-sudo adduser --system --home /srv/discord_bot/ lunatic
+sudo adduser --system --home /srv/discord_bot lunatic
 sudo addgroup --system lunatic
 ```
 
 ### Dependencies
 
 ```bash
+python3 -m venv /srv/discord_bot/.venv && source /srv/discord_bot/.venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -47,16 +48,20 @@ Create `.env` next to `discord_bot.py`:
 DISCORD_TOKEN=your_token_here
 ```
 
-### Log file
+### Logging
+
+The bot logs to syslog via the `LOCAL0` facility. Configure rsyslog to route those entries to a dedicated file:
 
 ```bash
-sudo touch /var/log/discord_bot.log
-sudo chown lunatic:lunatic /var/log/discord_bot.log
-sudo chmod 640 /var/log/discord_bot.log
-sudo apt-get install logrotate
+sudo cp dependencies/rsyslog/discord_bot.conf /etc/rsyslog.d/discord_bot.conf
+sudo systemctl restart rsyslog
 ```
 
-Copy `dependencies/logrotate/discord_bot` to `/etc/logrotate.d/discord_bot`.
+Set up log rotation:
+
+```bash
+sudo cp dependencies/logrotate/discord_bot /etc/logrotate.d/discord_bot
+```
 
 ### Systemd
 

@@ -4,6 +4,7 @@ import re
 import time
 import random
 import logging
+import logging.handlers
 import configparser
 import traceback
 
@@ -14,7 +15,12 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 # ── Logging ──────────────────────────────────────────────────────────────────
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+_syslog_handler = logging.handlers.SysLogHandler(
+    address="/dev/log",
+    facility=logging.handlers.SysLogHandler.LOG_LOCAL0,
+)
+_syslog_handler.setFormatter(logging.Formatter("discord_bot %(levelname)s %(message)s"))
+logging.basicConfig(level=logging.INFO, handlers=[_syslog_handler])
 log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
