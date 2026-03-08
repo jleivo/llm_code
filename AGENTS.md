@@ -28,6 +28,12 @@ Refactored recipient email addresses to be stored in an external JSON file.
 
 Keep commit messages short and to the point, focusing on what was changed and why.
 
+## Agent and Subagent Behaviour
+
+- Always read and follow this file (`AGENTS.md`) before taking any action.
+- When dispatching subagents, explicitly include the relevant rules from this file in the subagent prompt — subagents do not automatically inherit this context.
+- At minimum, always pass the Python virtual environment rule and the git commit format to any subagent working in this repository.
+
 ## Development
 
 - Each new script is developed in its own branch.
