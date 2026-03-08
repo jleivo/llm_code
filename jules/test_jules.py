@@ -169,3 +169,37 @@ def test_session_has_pending_question(requests_mock):
     session = JulesSession(session_id="session-123")
     question = session.get_latest_question()
     assert question == "Should I use JWT?"
+
+
+# --- load_config tests ---
+
+def test_load_config_defaults():
+    """Load config returns defaults when no file exists."""
+    from jules.jules import load_config
+    import os
+
+    # Use a non-existent path
+    config = load_config("/nonexistent/path/config.ini")
+    assert config["max_concurrent_sessions"] == 3
+    assert config["poll_interval_seconds"] == 30
+    assert config["default_executor"] == "jules"
+    assert config["auto_merge"] is True
+
+
+def test_load_config_custom(tmp_path):
+    """Load config reads custom values from file."""
+    from jules.jules import load_config
+
+    config_file = tmp_path / "jules_config.ini"
+    config_file.write_text(
+        "[jules]\n"
+        "max_concurrent_sessions = 5\n"
+        "poll_interval_seconds = 15\n"
+        "default_executor = claude\n"
+        "auto_merge = false\n"
+    )
+    config = load_config(str(config_file))
+    assert config["max_concurrent_sessions"] == 5
+    assert config["poll_interval_seconds"] == 15
+    assert config["default_executor"] == "claude"
+    assert config["auto_merge"] is False

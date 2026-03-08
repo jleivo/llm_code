@@ -4,6 +4,7 @@
 Jules library - Programmatic interface to the Jules AI coding agent API.
 """
 
+import configparser
 import os
 import re
 import subprocess
@@ -11,6 +12,39 @@ import requests
 
 
 JULES_API_BASE = "https://jules.googleapis.com/v1alpha"
+
+# Default configuration values
+DEFAULTS = {
+    "max_concurrent_sessions": 3,
+    "poll_interval_seconds": 30,
+    "default_executor": "jules",
+    "auto_merge": True,
+}
+
+
+def load_config(config_path="jules/jules_config.ini"):
+    """Load configuration from INI file, falling back to defaults.
+
+    Args:
+        config_path: Path to the config file.
+
+    Returns:
+        dict: Configuration values with keys:
+            - max_concurrent_sessions: int
+            - poll_interval_seconds: int
+            - default_executor: str ("jules" or "claude")
+            - auto_merge: bool
+    """
+    cp = configparser.ConfigParser()
+    cp.read(config_path)
+
+    config = dict(DEFAULTS)
+    if cp.has_section("jules"):
+        config["max_concurrent_sessions"] = cp.getint("jules", "max_concurrent_sessions", fallback=DEFAULTS["max_concurrent_sessions"])
+        config["poll_interval_seconds"] = cp.getint("jules", "poll_interval_seconds", fallback=DEFAULTS["poll_interval_seconds"])
+        config["default_executor"] = cp.get("jules", "default_executor", fallback=DEFAULTS["default_executor"])
+        config["auto_merge"] = cp.getboolean("jules", "auto_merge", fallback=DEFAULTS["auto_merge"])
+    return config
 
 
 class JulesError(Exception):
