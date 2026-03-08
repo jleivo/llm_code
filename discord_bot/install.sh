@@ -41,3 +41,31 @@ else
     echo "No existing installation at $INSTALL_DIR — performing fresh install."
     FRESH_INSTALL=true
 fi
+
+# ── System user ────────────────────────────────────────────────────────────────
+
+echo ""
+echo "--- System user ---"
+
+if id lunatic &>/dev/null; then
+    echo "User 'lunatic' already exists, skipping."
+else
+    echo "Creating system user 'lunatic'..."
+    sudo adduser --system --home "$INSTALL_DIR" --no-create-home lunatic
+    sudo addgroup --system lunatic 2>/dev/null || true
+    sudo usermod -aG lunatic lunatic
+fi
+
+# ── Directory and bot files ────────────────────────────────────────────────────
+
+echo ""
+echo "--- Installing bot files ---"
+
+sudo mkdir -p "$INSTALL_DIR"
+sudo chown lunatic:lunatic "$INSTALL_DIR"
+
+sudo cp "$SCRIPT_DIR/discord_bot.py" "$INSTALL_DIR/discord_bot.py"
+sudo cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/requirements.txt"
+sudo chown lunatic:lunatic "$INSTALL_DIR/discord_bot.py" "$INSTALL_DIR/requirements.txt"
+
+echo "Bot files copied to $INSTALL_DIR."
