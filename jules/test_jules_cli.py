@@ -69,3 +69,79 @@ def test_cli_merge_not_completed():
         with patch("sys.argv", ["jules_cli.py", "merge", "--session-id", "session-123"]):
             with pytest.raises(SystemExit):
                 main()
+
+
+def test_cli_auth_success(capsys):
+    """CLI auth command prints OK with endpoint and project on success."""
+    with patch("jules_cli.auth_check", return_value={"status": "ok", "endpoint": "https://jules.googleapis.com/v1alpha", "project": "my-project"}):
+        with patch("sys.argv", ["jules_cli.py", "auth"]):
+            main()
+    captured = capsys.readouterr()
+    assert "Authentication OK" in captured.out
+    assert "my-project" in captured.out
+    assert "https://jules.googleapis.com/v1alpha" in captured.out
+
+
+def test_cli_auth_failure(capsys):
+    """CLI auth command prints failure message and exits 1 on JulesError."""
+    from jules import JulesError
+    with patch("jules_cli.auth_check", side_effect=JulesError("Invalid or missing API key")):
+        with patch("sys.argv", ["jules_cli.py", "auth"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Authentication failed" in captured.out
+
+
+def test_cli_list_all(capsys):
+    """CLI list command prints all sessions."""
+    sessions = [
+        {"id": "s1", "state": "CODING", "title": "Fix bug"},
+        {"id": "s2", "state": "COMPLETED", "title": "Add tests"},
+    ]
+    with patch("jules_cli.list_sessions", return_value=sessions):
+        with patch("sys.argv", ["jules_cli.py", "list"]):
+            main()
+    captured = capsys.readouterr()
+    assert "s1" in captured.out
+    assert "CODING" in captured.out
+    assert "Fix bug" in captured.out
+    assert "s2" in captured.out
+
+
+def test_cli_list_filtered(capsys):
+    """CLI list --state passes filter to list_sessions."""
+    with patch("jules_cli.list_sessions", return_value=[]) as mock_list:
+        with patch("sys.argv", ["jules_cli.py", "list", "--state", "CODING"]):
+            main()
+    mock_list.assert_called_once_with(state_filter="CODING")
+
+
+def test_cli_list_invalid_state(capsys):
+    """CLI list --state with unknown state prints a warning."""
+    with patch("jules_cli.list_sessions", return_value=[]):
+        with patch("sys.argv", ["jules_cli.py", "list", "--state", "BOGUS"]):
+            main()
+    captured = capsys.readouterr()
+    assert "states" in captured.out.lower() or "valid" in captured.out.lower()
+
+
+def test_cli_list_empty(capsys):
+    """CLI list prints a message when no sessions found."""
+    with patch("jules_cli.list_sessions", return_value=[]):
+        with patch("sys.argv", ["jules_cli.py", "list"]):
+            main()
+    captured = capsys.readouterr()
+    assert "no sessions" in captured.out.lower()
+
+
+def test_cli_states(capsys):
+    """CLI states command prints all valid states."""
+    with patch("sys.argv", ["jules_cli.py", "states"]):
+        main()
+    captured = capsys.readouterr()
+    assert "CODING" in captured.out
+    assert "COMPLETED" in captured.out
+    assert "FAILED" in captured.out
+    assert "STARTING" in captured.out

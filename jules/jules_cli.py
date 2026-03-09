@@ -7,7 +7,7 @@ Jules CLI - Command-line wrapper for the Jules AI agent library.
 import argparse
 import sys
 import time
-from jules import JulesSession, JulesError
+from jules import JulesSession, JulesError, auth_check, list_sessions, VALID_STATES
 
 
 def poll_and_print(session):
@@ -102,6 +102,13 @@ Examples:
         "--session-id", required=True, help="The session ID"
     )
 
+    subparsers.add_parser("auth", help="Check authentication and display identity info")
+
+    list_parser = subparsers.add_parser("list", help="List Jules sessions")
+    list_parser.add_argument("--state", help="Filter by session state (see 'states' command)")
+
+    subparsers.add_parser("states", help="List valid session states")
+
     args = parser.parse_args()
 
     try:
@@ -126,6 +133,34 @@ Examples:
                 sys.exit(1)
             session.merge_pr()
             print("Successfully merged PR!")
+
+        elif args.command == "auth":
+            try:
+                result = auth_check()
+                print("Authentication OK")
+                print(f"  API endpoint: {result['endpoint']}")
+                print(f"  Project: {result['project']}")
+            except JulesError as e:
+                print(f"Authentication failed: {e}")
+                sys.exit(1)
+
+        elif args.command == "list":
+            state_filter = getattr(args, "state", None)
+            if state_filter and state_filter.upper() not in VALID_STATES:
+                print(f"Warning: '{state_filter}' is not a known state. Run 'states' to see valid values.")
+            sessions = list_sessions(state_filter=state_filter)
+            if not sessions:
+                print("No sessions found.")
+            else:
+                print(f"{'ID':<20} {'State':<30} {'Title'}")
+                print("-" * 70)
+                for s in sessions:
+                    print(f"{s.get('id', ''):<20} {s.get('state', ''):<30} {s.get('title', '')}")
+
+        elif args.command == "states":
+            print("Valid session states:")
+            for state in VALID_STATES:
+                print(f"  {state}")
 
         else:
             parser.print_help()
