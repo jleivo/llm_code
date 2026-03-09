@@ -5,8 +5,8 @@ programmatic use (from Claude Code skills) and direct command-line usage.
 
 ## Setup
 
-1. **Jules API Key**: Create `jules_api_key.txt` in the repo root with your
-   key from [jules.google.com/settings](https://jules.google.com/settings).
+1. **Jules API Key**: Create Vault secret jules_api with key value and the API key
+   as the secret. You can get the key from [jules.google.com/settings](https://jules.google.com/settings).
 
 2. **GitHub Token**: For auto-merge, set `GITHUB_TOKEN` env var or create
    `github_token.txt`. Needs Pull Request read/write permission on the repo.
