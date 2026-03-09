@@ -36,7 +36,6 @@ def test_detect_github_repo_no_remote():
 
 @pytest.fixture(autouse=True)
 def mock_api_key(monkeypatch):
-    monkeypatch.setenv("JULES_API_KEY_FILE", "/dev/null")
     monkeypatch.setattr("jules.jules.get_jules_api_key", lambda: "fake-api-key")
 
 def test_session_create(requests_mock):

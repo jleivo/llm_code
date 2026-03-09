@@ -61,3 +61,7 @@ Change in Z means a fix in any given feature
 
 - use bats for unittests
 - Write multiple test methods that cover a wide range of scenarios, including edge cases, exception handling, and data validation.
+
+### Secret handling
+
+- read SECRETS.md if the script handles secrets. Determine if the secret should be host scope or service scope and develop the secret handling and documentation accordingly
