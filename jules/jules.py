@@ -23,6 +23,16 @@ DEFAULTS = {
 }
 
 
+VALID_STATES = (
+    "STARTING",
+    "WAITING_FOR_USER_RESPONSE",
+    "CODING",
+    "COMPLETED",
+    "FAILED",
+    "CANCELLED",
+)
+
+
 def load_config(config_path="jules/jules_config.ini"):
     """Load configuration from INI file, falling back to defaults.
 
@@ -87,6 +97,26 @@ def get_github_token():
         raise JulesError(
             "GitHub token not found. Set GITHUB_TOKEN env var or create github_token.txt."
         )
+
+
+def auth_check():
+    """Verify API key works by making a minimal authenticated request.
+
+    Returns:
+        dict: {"status": "ok", "endpoint": str, "project": str}
+
+    Raises:
+        JulesError: If the API key is invalid or missing.
+    """
+    resp = _jules_request("GET", "sessions", params={"pageSize": 1})
+    project = "unknown"
+    sessions = (resp or {}).get("sessions", [])
+    if sessions:
+        name = sessions[0].get("name", "")
+        parts = name.split("/")
+        if len(parts) >= 2 and parts[0] == "projects":
+            project = parts[1]
+    return {"status": "ok", "endpoint": JULES_API_BASE, "project": project}
 
 
 def detect_github_repo():

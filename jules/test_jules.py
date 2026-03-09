@@ -202,3 +202,52 @@ def test_load_config_custom(tmp_path):
     assert config["poll_interval_seconds"] == 15
     assert config["default_executor"] == "claude"
     assert config["auto_merge"] is False
+
+
+# --- auth_check tests ---
+
+def test_auth_check_success(requests_mock):
+    """auth_check returns ok dict when API key is valid."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={"sessions": [{"id": "s1", "name": "projects/my-project/sessions/s1", "state": "CODING"}]}
+    )
+    from jules.jules import auth_check, JULES_API_BASE
+    result = auth_check()
+    assert result["status"] == "ok"
+    assert result["endpoint"] == JULES_API_BASE
+    assert "project" in result
+
+
+def test_auth_check_extracts_project(requests_mock):
+    """auth_check extracts project from session name when available."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={"sessions": [{"id": "s1", "name": "projects/my-project/sessions/s1", "state": "CODING"}]}
+    )
+    from jules.jules import auth_check
+    result = auth_check()
+    assert result["project"] == "my-project"
+
+
+def test_auth_check_unknown_project_when_no_sessions(requests_mock):
+    """auth_check returns project=unknown when session list is empty."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={"sessions": []}
+    )
+    from jules.jules import auth_check
+    result = auth_check()
+    assert result["project"] == "unknown"
+
+
+def test_auth_check_failure(requests_mock):
+    """auth_check raises JulesError on 401."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        status_code=401,
+        json={"error": {"message": "API key not valid"}}
+    )
+    from jules.jules import auth_check
+    with pytest.raises(JulesError):
+        auth_check()
