@@ -124,6 +124,7 @@ def list_sessions(state_filter=None, page_size=50):
 
     Args:
         state_filter: If given, only return sessions with this state (case-insensitive).
+            Filtering is applied client-side after all pages are fetched.
         page_size: Number of sessions per page.
 
     Returns:

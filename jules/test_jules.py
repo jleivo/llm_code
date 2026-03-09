@@ -254,7 +254,7 @@ def test_auth_check_failure(requests_mock):
 # --- list_sessions tests ---
 
 def test_list_sessions_all(requests_mock):
-    """list_sessions returns all sessions when no filter given."""
+    """list_sessions returns all sessions across states when no filter given."""
     requests_mock.get(
         "https://jules.googleapis.com/v1alpha/sessions",
         json={
@@ -268,6 +268,17 @@ def test_list_sessions_all(requests_mock):
     assert len(result) == 2
     assert result[0]["id"] == "s1"
     assert result[1]["id"] == "s2"
+    assert {r["state"] for r in result} == {"CODING", "COMPLETED"}
+
+
+def test_list_sessions_empty(requests_mock):
+    """list_sessions returns empty list when no sessions exist."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={"sessions": []}
+    )
+    result = list_sessions()
+    assert result == []
 
 
 def test_list_sessions_filtered(requests_mock):
@@ -295,10 +306,11 @@ def test_list_sessions_filter_case_insensitive(requests_mock):
     )
     result = list_sessions(state_filter="coding")
     assert len(result) == 1
+    assert result[0]["state"] == "CODING"
 
 
 def test_list_sessions_pagination(requests_mock):
-    """list_sessions handles pagination."""
+    """list_sessions handles pagination and combines results from all pages."""
     requests_mock.get(
         "https://jules.googleapis.com/v1alpha/sessions?pageSize=50",
         json={"sessions": [{"id": "s1", "state": "CODING"}], "nextPageToken": "tok1"}
@@ -309,3 +321,20 @@ def test_list_sessions_pagination(requests_mock):
     )
     result = list_sessions()
     assert len(result) == 2
+    assert result[0]["id"] == "s1"
+    assert result[1]["id"] == "s2"
+
+
+def test_list_sessions_pagination_with_filter(requests_mock):
+    """list_sessions applies filter after collecting all pages."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions?pageSize=50",
+        json={"sessions": [{"id": "s1", "state": "CODING"}], "nextPageToken": "tok1"}
+    )
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions?pageSize=50&pageToken=tok1",
+        json={"sessions": [{"id": "s2", "state": "COMPLETED"}, {"id": "s3", "state": "CODING"}]}
+    )
+    result = list_sessions(state_filter="CODING")
+    assert len(result) == 2
+    assert all(s["state"] == "CODING" for s in result)
