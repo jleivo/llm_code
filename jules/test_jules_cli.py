@@ -111,11 +111,13 @@ def test_cli_list_all(capsys):
 
 
 def test_cli_list_filtered(capsys):
-    """CLI list --state passes filter to list_sessions."""
-    with patch("jules_cli.list_sessions", return_value=[]) as mock_list:
+    """CLI list --state passes filter to list_sessions and shows filtered results."""
+    with patch("jules_cli.list_sessions", return_value=[{"id": "s1", "state": "CODING", "title": "Fix bug"}]) as mock_list:
         with patch("sys.argv", ["jules_cli.py", "list", "--state", "CODING"]):
             main()
     mock_list.assert_called_once_with(state_filter="CODING")
+    captured = capsys.readouterr()
+    assert "s1" in captured.out
 
 
 def test_cli_list_invalid_state(capsys):
@@ -138,10 +140,9 @@ def test_cli_list_empty(capsys):
 
 def test_cli_states(capsys):
     """CLI states command prints all valid states."""
+    from jules import VALID_STATES
     with patch("sys.argv", ["jules_cli.py", "states"]):
         main()
     captured = capsys.readouterr()
-    assert "CODING" in captured.out
-    assert "COMPLETED" in captured.out
-    assert "FAILED" in captured.out
-    assert "STARTING" in captured.out
+    for state in VALID_STATES:
+        assert state in captured.out

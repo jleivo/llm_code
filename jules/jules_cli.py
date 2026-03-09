@@ -135,17 +135,13 @@ Examples:
             print("Successfully merged PR!")
 
         elif args.command == "auth":
-            try:
-                result = auth_check()
-                print("Authentication OK")
-                print(f"  API endpoint: {result['endpoint']}")
-                print(f"  Project: {result['project']}")
-            except JulesError as e:
-                print(f"Authentication failed: {e}")
-                sys.exit(1)
+            result = auth_check()
+            print("Authentication OK")
+            print(f"  API endpoint: {result['endpoint']}")
+            print(f"  Project: {result['project']}")
 
         elif args.command == "list":
-            state_filter = getattr(args, "state", None)
+            state_filter = args.state
             if state_filter and state_filter.upper() not in VALID_STATES:
                 print(f"Warning: '{state_filter}' is not a known state. Run 'states' to see valid values.")
             sessions = list_sessions(state_filter=state_filter)
@@ -166,7 +162,8 @@ Examples:
             parser.print_help()
 
     except JulesError as e:
-        print(f"Error: {e}")
+        prefix = "Authentication failed" if args.command == "auth" else "Error"
+        print(f"{prefix}: {e}")
         sys.exit(1)
 
 
