@@ -1,7 +1,7 @@
 import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
-from jules import JulesSession, JulesError, detect_github_repo, auth_check, VALID_STATES
+from jules import JulesSession, JulesError, detect_github_repo, auth_check, list_sessions, VALID_STATES
 from jules.jules import JULES_API_BASE
 
 # --- detect_github_repo tests ---
@@ -249,3 +249,63 @@ def test_auth_check_failure(requests_mock):
     )
     with pytest.raises(JulesError):
         auth_check()
+
+
+# --- list_sessions tests ---
+
+def test_list_sessions_all(requests_mock):
+    """list_sessions returns all sessions when no filter given."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={
+            "sessions": [
+                {"id": "s1", "state": "CODING", "title": "Fix bug", "url": "https://jules.google.com/s1", "createTime": "2026-03-09T10:00:00Z"},
+                {"id": "s2", "state": "COMPLETED", "title": "Add tests", "url": "https://jules.google.com/s2", "createTime": "2026-03-09T09:00:00Z"},
+            ]
+        }
+    )
+    result = list_sessions()
+    assert len(result) == 2
+    assert result[0]["id"] == "s1"
+    assert result[1]["id"] == "s2"
+
+
+def test_list_sessions_filtered(requests_mock):
+    """list_sessions filters by state when state_filter is given."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={
+            "sessions": [
+                {"id": "s1", "state": "CODING", "title": "Fix bug"},
+                {"id": "s2", "state": "COMPLETED", "title": "Add tests"},
+                {"id": "s3", "state": "CODING", "title": "Refactor"},
+            ]
+        }
+    )
+    result = list_sessions(state_filter="CODING")
+    assert len(result) == 2
+    assert all(s["state"] == "CODING" for s in result)
+
+
+def test_list_sessions_filter_case_insensitive(requests_mock):
+    """list_sessions filter is case-insensitive."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions",
+        json={"sessions": [{"id": "s1", "state": "CODING", "title": "Fix bug"}]}
+    )
+    result = list_sessions(state_filter="coding")
+    assert len(result) == 1
+
+
+def test_list_sessions_pagination(requests_mock):
+    """list_sessions handles pagination."""
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions?pageSize=50",
+        json={"sessions": [{"id": "s1", "state": "CODING"}], "nextPageToken": "tok1"}
+    )
+    requests_mock.get(
+        "https://jules.googleapis.com/v1alpha/sessions?pageSize=50&pageToken=tok1",
+        json={"sessions": [{"id": "s2", "state": "COMPLETED"}]}
+    )
+    result = list_sessions()
+    assert len(result) == 2

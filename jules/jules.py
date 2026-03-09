@@ -119,6 +119,34 @@ def auth_check():
     return {"status": "ok", "endpoint": JULES_API_BASE, "project": project}
 
 
+def list_sessions(state_filter=None, page_size=50):
+    """List all Jules sessions, optionally filtered by state.
+
+    Args:
+        state_filter: If given, only return sessions with this state (case-insensitive).
+        page_size: Number of sessions per page.
+
+    Returns:
+        list: Session dicts with keys: id, state, title, url, createTime.
+    """
+    sessions = []
+    page_token = None
+    while True:
+        params = {"pageSize": page_size}
+        if page_token:
+            params["pageToken"] = page_token
+        resp = _jules_request("GET", "sessions", params=params)
+        if not resp:
+            break
+        sessions.extend(resp.get("sessions", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    if state_filter:
+        sessions = [s for s in sessions if s.get("state", "").upper() == state_filter.upper()]
+    return sessions
+
+
 def detect_github_repo():
     """Auto-detect GitHub owner/repo from git remote.
 
