@@ -135,3 +135,36 @@ EOF
 sudo chown lunatic:lunatic "$EXISTING_CONFIG"
 sudo chmod 640 "$EXISTING_CONFIG"
 echo "config.ini written."
+
+# ── .env walkthrough ───────────────────────────────────────────────────────────
+
+echo ""
+echo "--- Discord token ---"
+
+ENV_FILE="$INSTALL_DIR/.env"
+current_token=""
+if [[ -f "$ENV_FILE" ]]; then
+    current_token="$(grep -m1 '^DISCORD_TOKEN=' "$ENV_FILE" | cut -d'=' -f2-)"
+fi
+
+if [[ -n "$current_token" ]]; then
+    token_len="${#current_token}"
+    if [[ "$token_len" -gt 8 ]]; then
+        masked="${current_token:0:4}****${current_token: -4}"
+    else
+        masked="****"
+    fi
+    echo "Current token: $masked"
+    read -rp "Discord token [keep current]: " new_token
+    DISCORD_TOKEN="${new_token:-$current_token}"
+else
+    read -rp "Discord token: " DISCORD_TOKEN
+fi
+
+sudo tee "$ENV_FILE" > /dev/null << EOF
+DISCORD_TOKEN=$DISCORD_TOKEN
+EOF
+
+sudo chown lunatic:lunatic "$ENV_FILE"
+sudo chmod 600 "$ENV_FILE"
+echo ".env written."
