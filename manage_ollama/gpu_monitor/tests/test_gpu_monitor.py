@@ -1,6 +1,6 @@
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers to build a fake pynvml module
@@ -95,6 +95,71 @@ def test_metrics_gpu_library_error_returns_503(monkeypatch):
         import importlib
         import manage_ollama.gpu_monitor.gpu_monitor as gm
         importlib.reload(gm)
+        gm._test_mode = True
+        gm.start_poll_thread(5)
+        from fastapi.testclient import TestClient
+        resp = TestClient(gm.app).get("/metrics")
+        assert resp.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# AMD / Windows path
+# ---------------------------------------------------------------------------
+
+def _make_amdsmi_mock(gpu_utils):
+    mock = MagicMock()
+    devices = [MagicMock() for _ in gpu_utils]
+    mock.amdsmi_get_processor_handles.return_value = devices
+    mock.amdsmi_get_gpu_activity.side_effect = lambda d: {
+        "gfx_activity": gpu_utils[devices.index(d)]
+    }
+    mock.amdsmi_get_gpu_asic_info.side_effect = lambda d: {
+        "market_name": f"AMD GPU {devices.index(d)}"
+    }
+    return mock
+
+
+@pytest.fixture()
+def amd_client(monkeypatch):
+    fake_amd = _make_amdsmi_mock([30, 60])
+    import importlib
+    import manage_ollama.gpu_monitor.gpu_monitor as gm
+    importlib.reload(gm)
+
+    # On Linux, monkeypatching sys.platform to 'win32' breaks many imports.
+    # We simulate the reload-time platform check by manually setting the constants.
+    monkeypatch.setattr(gm, "PLATFORM_LINUX", False)
+    monkeypatch.setattr(gm, "PLATFORM_WINDOWS", True)
+
+    with patch.dict(sys.modules, {"amdsmi": fake_amd}):
+        gm._test_mode = True
+        gm.start_poll_thread(5)
+        from fastapi.testclient import TestClient
+        yield TestClient(gm.app), gm
+
+
+def test_amd_metrics_utilization_is_max(amd_client):
+    """AMD: top-level value is max across GPUs (30 and 60 → 60)."""
+    client, _ = amd_client
+    data = client.get("/metrics").json()
+    assert data["gpu_utilization_pct"] == 60
+
+
+def test_amd_metrics_gpu_count(amd_client):
+    client, _ = amd_client
+    data = client.get("/metrics").json()
+    assert len(data["gpus"]) == 2
+
+
+def test_amd_gpu_library_error_returns_503(monkeypatch):
+    fake_amd = MagicMock()
+    fake_amd.amdsmi_get_processor_handles.side_effect = RuntimeError("amdsmi error")
+    import importlib
+    import manage_ollama.gpu_monitor.gpu_monitor as gm
+    importlib.reload(gm)
+    monkeypatch.setattr(gm, "PLATFORM_LINUX", False)
+    monkeypatch.setattr(gm, "PLATFORM_WINDOWS", True)
+    with patch.dict(sys.modules, {"amdsmi": fake_amd}):
         gm._test_mode = True
         gm.start_poll_thread(5)
         from fastapi.testclient import TestClient
