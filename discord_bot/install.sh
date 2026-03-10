@@ -69,3 +69,18 @@ sudo cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/requirements.txt"
 sudo chown lunatic:lunatic "$INSTALL_DIR/discord_bot.py" "$INSTALL_DIR/requirements.txt"
 
 echo "Bot files copied to $INSTALL_DIR."
+
+# ── Python venv and packages ───────────────────────────────────────────────────
+
+echo ""
+echo "--- Python environment ---"
+
+if [[ ! -d "$INSTALL_DIR/.venv" ]]; then
+    echo "Creating virtual environment..."
+    sudo -u lunatic python3 -m venv "$INSTALL_DIR/.venv"
+fi
+
+echo "Installing/upgrading Python packages..."
+sudo -u lunatic "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip -q
+sudo -u lunatic "$INSTALL_DIR/.venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" --upgrade
+echo "Python packages up to date."
