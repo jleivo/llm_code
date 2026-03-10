@@ -81,10 +81,24 @@ class HostManager:
                 [h for h in self.hosts if h.is_available() and h.url not in excluded_urls],
                 key=lambda h: h.priority or float('inf')
             )
-            logger.info(f"Finding best host for model '{model_name}' among {len(available_hosts)} available hosts (excluding {len(excluded_urls)}).")
+            # Build preferred pool: hosts below GPU threshold.
+            # Hosts with no load_monitor_url are always included (fail open).
+            preferred_hosts = [
+                h for h in available_hosts
+                if h.load_monitor_url is None
+                or h.gpu_utilization_pct < h.gpu_load_threshold_pct
+            ]
+            # Fall back to all available hosts if every host is above threshold.
+            routing_hosts = preferred_hosts if preferred_hosts else available_hosts
+            logger.info(
+                "GPU routing: %d preferred hosts (below threshold), %d total available.",
+                len(preferred_hosts), len(available_hosts)
+            )
+
+            logger.info(f"Finding best host for model '{model_name}' among {len(routing_hosts)} available hosts (excluding {len(excluded_urls)}).")
 
             # 1. Prioritize hosts with the model already loaded in VRAM.
-            loaded_hosts = [host for host in available_hosts if model_name in host.get_loaded_models()]
+            loaded_hosts = [host for host in routing_hosts if model_name in host.get_loaded_models()]
             if loaded_hosts:
                 # Sort by free VRAM (descending) to prefer hosts with more available memory
                 loaded_hosts_sorted = sorted(loaded_hosts, key=lambda h: h.get_free_vram(), reverse=True)
@@ -93,7 +107,7 @@ class HostManager:
                 return best_host
 
             # 2. Prioritize hosts with the model on disk (but not loaded).
-            local_hosts = [host for host in available_hosts if model_name in host.get_local_models()]
+            local_hosts = [host for host in routing_hosts if model_name in host.get_local_models()]
             if local_hosts:
                 local_hosts_sorted = sorted(local_hosts, key=lambda h: h.get_free_vram(), reverse=True)
                 best_host = local_hosts_sorted[0]
@@ -103,7 +117,7 @@ class HostManager:
             # 3. Find host with most free VRAM (no eviction needed)
             best_host_by_vram = None
             max_free_vram = -1
-            for host in available_hosts:
+            for host in routing_hosts:
                 free_vram = host.get_free_vram()
                 if free_vram > max_free_vram:
                     max_free_vram = free_vram
@@ -119,7 +133,7 @@ class HostManager:
 
             # Try LRU eviction scenario
             eviction_candidates = []
-            for host in available_hosts:
+            for host in routing_hosts:
                 model_size = host.get_model_size(model_name) or 0
                 if model_size == 0:
                     continue  # Skip if size unknown

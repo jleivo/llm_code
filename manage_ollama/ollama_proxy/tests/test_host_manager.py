@@ -635,3 +635,63 @@ def test_update_status_no_load_monitor_url_no_regression(mocker):
     # requests.get called only for check_availability (which we stubbed above),
     # not for any load monitor URL
     assert host.gpu_utilization_pct == 0
+
+# ---------------------------------------------------------------------------
+# GPU-aware routing in get_best_host()
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def two_host_manager(mocker):
+    """HostManager with two hosts, both available, model on disk on both."""
+    mocker.patch.object(HostManager, 'load_config', return_value=None)
+    hm = HostManager('dummy.json')
+    h1 = OllamaHost({"url": "http://h1:11434", "total_vram_mb": 16000,
+                     "load_monitor_url": "http://h1:9091", "gpu_load_threshold_pct": 80})
+    h2 = OllamaHost({"url": "http://h2:11434", "total_vram_mb": 16000,
+                     "load_monitor_url": "http://h2:9091", "gpu_load_threshold_pct": 80})
+    for h in (h1, h2):
+        h.available = True
+        h.free_vram_mb = 8000
+        h.local_models = ["llama3"]
+        h.loaded_models = []
+    hm.hosts = [h1, h2]
+    return hm, h1, h2
+
+
+def test_routing_excludes_overloaded_host_when_alternative_exists(two_host_manager):
+    """Host above GPU threshold is skipped when an alternative is available."""
+    hm, h1, h2 = two_host_manager
+    h1.gpu_utilization_pct = 90   # above threshold
+    h2.gpu_utilization_pct = 30   # below threshold
+
+    result = hm.get_best_host("llama3")
+    assert result.url == "http://h2:11434"
+
+
+def test_routing_fallback_when_all_hosts_above_threshold(two_host_manager):
+    """If all hosts exceed threshold, falls back to VRAM routing (does not fail)."""
+    hm, h1, h2 = two_host_manager
+    h1.gpu_utilization_pct = 90
+    h2.gpu_utilization_pct = 95
+    h1.free_vram_mb = 8000
+    h2.free_vram_mb = 4000
+
+    result = hm.get_best_host("llama3")
+    # Falls back → picks h1 (most free VRAM)
+    assert result is not None
+    assert result.url == "http://h1:11434"
+
+
+def test_routing_no_load_monitor_behaves_as_before(mocker):
+    """Hosts without load_monitor_url are never filtered by GPU threshold."""
+    mocker.patch.object(HostManager, 'load_config', return_value=None)
+    hm = HostManager('dummy.json')
+    h1 = OllamaHost({"url": "http://h1:11434", "total_vram_mb": 8000})
+    h1.available = True
+    h1.free_vram_mb = 4000
+    h1.local_models = ["llama3"]
+    h1.loaded_models = []
+    hm.hosts = [h1]
+
+    result = hm.get_best_host("llama3")
+    assert result.url == "http://h1:11434"
