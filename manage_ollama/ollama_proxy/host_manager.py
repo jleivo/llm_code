@@ -203,6 +203,9 @@ class OllamaHost:
         self.local_models = []
         self.model_usage_cache = {}  # {model_name: {"size_vram": int, "last_used": float}}
         self._lru_tracker = LRUCache()
+        self.load_monitor_url = config.get('load_monitor_url', None)
+        self.gpu_load_threshold_pct = config.get('gpu_load_threshold_pct', 80)
+        self.gpu_utilization_pct: float = 0.0
 
     def update_status(self):
         if not self.check_availability():
