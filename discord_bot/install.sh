@@ -84,3 +84,54 @@ echo "Installing/upgrading Python packages..."
 sudo -u lunatic "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip -q
 sudo -u lunatic "$INSTALL_DIR/.venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" --upgrade
 echo "Python packages up to date."
+
+# ── config.ini walkthrough ─────────────────────────────────────────────────────
+
+echo ""
+echo "--- Bot configuration ---"
+
+EXISTING_CONFIG="$INSTALL_DIR/config.ini"
+
+existing_version=""
+if [[ -f "$EXISTING_CONFIG" ]]; then
+    existing_version="$(get_ini_value "$EXISTING_CONFIG" "meta" "version")"
+    if [[ "$existing_version" != "$CONFIG_VERSION" ]]; then
+        echo "Config version mismatch (found: ${existing_version:-none}, expected: $CONFIG_VERSION). Walking through all settings."
+    else
+        echo "Config is current (version $CONFIG_VERSION). Confirming all settings."
+    fi
+fi
+
+# api
+api_base_url="$(prompt_value "API base URL" "$(get_ini_value "$EXISTING_CONFIG" "api" "base_url")")"
+api_api_key="$(prompt_value "API key" "$(get_ini_value "$EXISTING_CONFIG" "api" "api_key")")"
+api_model="$(prompt_value "Model name" "$(get_ini_value "$EXISTING_CONFIG" "api" "model")")"
+
+# bot
+bot_system_prompt="$(prompt_value "System prompt" "$(get_ini_value "$EXISTING_CONFIG" "bot" "system_prompt")")"
+bot_history_ttl="$(prompt_value "History TTL (seconds)" "$(get_ini_value "$EXISTING_CONFIG" "bot" "history_ttl")")"
+bot_spontaneous_min="$(prompt_value "Spontaneous min messages" "$(get_ini_value "$EXISTING_CONFIG" "bot" "spontaneous_min")")"
+bot_spontaneous_max="$(prompt_value "Spontaneous max messages" "$(get_ini_value "$EXISTING_CONFIG" "bot" "spontaneous_max")")"
+bot_active_rounds="$(prompt_value "Active rounds after spontaneous trigger" "$(get_ini_value "$EXISTING_CONFIG" "bot" "active_rounds")")"
+
+# Write config
+sudo tee "$EXISTING_CONFIG" > /dev/null << EOF
+[meta]
+version = $CONFIG_VERSION
+
+[api]
+base_url = $api_base_url
+api_key = $api_api_key
+model = $api_model
+
+[bot]
+system_prompt = $bot_system_prompt
+history_ttl = $bot_history_ttl
+spontaneous_min = $bot_spontaneous_min
+spontaneous_max = $bot_spontaneous_max
+active_rounds = $bot_active_rounds
+EOF
+
+sudo chown lunatic:lunatic "$EXISTING_CONFIG"
+sudo chmod 640 "$EXISTING_CONFIG"
+echo "config.ini written."
