@@ -497,3 +497,25 @@ def test_record_model_usage(mock_host_manager_for_logic):
     host1.record_model_usage('test-model')
     models = host1.get_models_sorted_by_lru()
     assert 'test-model' in models
+# ---------------------------------------------------------------------------
+# GPU load monitor config loading
+# ---------------------------------------------------------------------------
+
+def test_ollamahost_defaults_for_load_monitor():
+    """OllamaHost has sensible defaults when load_monitor fields are absent from config."""
+    host = OllamaHost({"url": "http://host:11434", "total_vram_mb": 8000})
+    assert host.load_monitor_url is None
+    assert host.gpu_load_threshold_pct == 80
+    assert host.gpu_utilization_pct == 0.0
+
+
+def test_ollamahost_load_monitor_config_loaded():
+    """OllamaHost reads load_monitor_url and gpu_load_threshold_pct from config."""
+    host = OllamaHost({
+        "url": "http://host:11434",
+        "total_vram_mb": 8000,
+        "load_monitor_url": "http://host:9091",
+        "gpu_load_threshold_pct": 75,
+    })
+    assert host.load_monitor_url == "http://host:9091"
+    assert host.gpu_load_threshold_pct == 75
