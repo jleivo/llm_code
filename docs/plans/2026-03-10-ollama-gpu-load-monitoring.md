@@ -1,6 +1,6 @@
 # GPU Load Monitoring Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:jules-executor to implement this plan task-by-task.
 
 **Goal:** Add a cross-platform GPU utilization poller (`gpu_monitor.py`) that exposes a `/metrics` HTTP endpoint, and integrate it into the Ollama proxy as a pre-filter in host routing.
 
@@ -11,6 +11,8 @@
 ---
 
 ## Task 1: Merge ollama-proxy into feat/ollama_load
+- executor: claude
+- depends: none
 
 **Files:**
 - No files to create; git operation only.
@@ -43,6 +45,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "chore: merge ollama-prox
 ---
 
 ## Task 2: Create gpu_monitor directory skeleton
+- executor: claude
+- depends: [1]
 
 **Files:**
 - Create: `manage_ollama/gpu_monitor/__init__.py`
@@ -76,6 +80,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "chore: add gpu_monitor d
 ---
 
 ## Task 3: gpu_monitor — /metrics endpoint, NVIDIA path (TDD)
+- executor: jules
+- depends: [2]
 
 **Files:**
 - Create: `manage_ollama/gpu_monitor/tests/test_gpu_monitor.py`
@@ -341,6 +347,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "feat: add gpu_monitor wi
 ---
 
 ## Task 4: gpu_monitor — AMD/Windows path (TDD)
+- executor: jules
+- depends: [3]
 
 **Files:**
 - Modify: `manage_ollama/gpu_monitor/tests/test_gpu_monitor.py`
@@ -433,6 +441,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "test: add AMD/Windows pa
 ---
 
 ## Task 5: Proxy config — new OllamaHost fields (TDD)
+- executor: jules
+- depends: [2]
 
 **Files:**
 - Modify: `manage_ollama/ollama_proxy/tests/test_host_manager.py`
@@ -504,6 +514,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "feat: add load_monitor_u
 ---
 
 ## Task 6: Proxy — load monitor polling in update_status() (TDD)
+- executor: jules
+- depends: [5]
 
 **Files:**
 - Modify: `manage_ollama/ollama_proxy/tests/test_host_manager.py`
@@ -689,6 +701,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "feat: poll GPU load moni
 ---
 
 ## Task 7: Proxy — GPU-aware routing in get_best_host() (TDD)
+- executor: jules
+- depends: [6]
 
 **Files:**
 - Modify: `manage_ollama/ollama_proxy/tests/test_host_manager.py`
@@ -821,6 +835,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "feat: GPU-threshold pre-
 ---
 
 ## Task 8: Deployment files
+- executor: jules
+- depends: [2]
 
 **Files:**
 - Create: `manage_ollama/dependencies/gpu_monitor/gpu_monitor.service`
@@ -954,6 +970,8 @@ git commit --author="lunatic <lunatic@discord-bot>" -m "feat: add deployment fil
 ---
 
 ## Task 9: README for gpu_monitor
+- executor: jules
+- depends: [2]
 
 **Files:**
 - Create: `manage_ollama/gpu_monitor/README.md`
