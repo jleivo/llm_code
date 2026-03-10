@@ -1,49 +1,74 @@
-# GPU Monitor
+# gpu_monitor
 
-A lightweight, cross-platform GPU utilization poller for Ollama proxy load monitoring.
+Cross-platform GPU utilization monitor for the Ollama proxy. Exposes a single
+HTTP endpoint so the proxy can make load-aware routing decisions.
 
-## Features
+## Platforms
 
-- **Cross-Platform:** Supports NVIDIA GPUs on Linux and AMD GPUs on Windows.
-- **HTTP Metrics:** Provides a `/metrics` endpoint that returns GPU utilization data in JSON format.
-- **Periodic Polling:** Continuously monitors GPU activity at a configurable interval.
+| Platform | GPU vendor | Library |
+|---|---|---|
+| Linux | NVIDIA | `pynvml` |
+| Windows | AMD | `amdsmi` (system package, installed with AMD drivers) |
 
-## Usage
+## Endpoint
 
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
+```
+GET http://<host>:9091/metrics
 ```
 
-### Run the Monitor
-
-```bash
-python gpu_monitor.py --port 9091
-```
-
-## API Endpoints
-
-### `GET /metrics`
-
-Returns the current GPU utilization metrics.
-
-**Response Body:**
-
+Response:
 ```json
 {
   "gpu_utilization_pct": 52,
   "gpus": [
+    {"index": 0, "name": "NVIDIA GeForce RTX 3090", "utilization_pct": 45},
+    {"index": 1, "name": "NVIDIA GeForce RTX 3090", "utilization_pct": 52}
+  ]
+}
+```
+
+`gpu_utilization_pct` is the **max** across all GPUs. Returns HTTP 503 when the
+GPU library cannot be read.
+
+## Installation
+
+### Linux
+
+```bash
+sudo bash manage_ollama/dependencies/gpu_monitor/install_linux.sh
+```
+
+Installs to `/opt/gpu_monitor/` by default. Pass a different path as first argument.
+
+### Windows
+
+Run PowerShell as Administrator:
+
+```powershell
+.\manage_ollama\dependencies\gpu_monitor\install_windows.ps1
+```
+
+Requires [NSSM](https://nssm.cc/) on PATH. Pass `-NssmPath` to override.
+AMD `amdsmi` is a system package installed alongside AMD drivers — it is not in
+`requirements.txt`.
+
+## Proxy Configuration
+
+Add `load_monitor_url` and optionally `gpu_load_threshold_pct` (default 80) to
+each host entry in the proxy's `config.json`:
+
+```json
+{
+  "hosts": [
     {
-      "index": 0,
-      "name": "NVIDIA GeForce RTX 3080",
-      "utilization_pct": 45
-    },
-    {
-      "index": 1,
-      "name": "NVIDIA GeForce RTX 3080",
-      "utilization_pct": 52
+      "url": "http://gpu-host:11434",
+      "total_vram_mb": 16384,
+      "priority": 1,
+      "load_monitor_url": "http://gpu-host:9091",
+      "gpu_load_threshold_pct": 80
     }
   ]
 }
 ```
+
+Hosts without `load_monitor_url` are unaffected and route as before.
