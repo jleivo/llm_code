@@ -214,6 +214,29 @@ class OllamaHost:
             self.local_models = []
             return
         self.update_models_and_vram_from_api()
+        self._update_gpu_utilization()
+
+    def _update_gpu_utilization(self) -> None:
+        """Poll the load monitor endpoint and update gpu_utilization_pct. Fails open."""
+        if not self.load_monitor_url:
+            return
+        try:
+            response = requests.get(f"{self.load_monitor_url}/metrics", timeout=3)
+            if response.status_code != 200:
+                logger.warning("Load monitor %s returned HTTP %d — using 0%%",
+                               self.load_monitor_url, response.status_code)
+                return
+            data = response.json()
+            raw = data.get("gpu_utilization_pct")
+            if not isinstance(raw, (int, float)):
+                logger.warning("Load monitor %s returned non-numeric gpu_utilization_pct: %r",
+                               self.load_monitor_url, raw)
+                return
+            self.gpu_utilization_pct = min(float(raw), 100.0)
+            logger.info("Host %s GPU utilization: %.1f%%", self.url, self.gpu_utilization_pct)
+        except Exception as exc:
+            logger.warning("Could not reach load monitor %s: %s — failing open",
+                           self.load_monitor_url, exc)
 
     def check_availability(self):
         try:
