@@ -1,5 +1,7 @@
 *.pyc
 *.pyo
+*.log
+*.sqlite
 .env
 .pytest_cache
 .venv
@@ -8,5 +10,4 @@ __pycache__
 github_token.txt
 jules_api_key.txt
 openai-env
-jules_api_key.txt
 .worktrees/

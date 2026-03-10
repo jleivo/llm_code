@@ -1,0 +1,17 @@
+{
+  "server": {
+    "port": 9090
+  },
+  "hosts": [
+    {
+      "url": "http://ollama.intra.leivo:11434",
+      "total_vram_mb": 16384,
+      "priority": 1
+    },
+    {
+      "url": "http://host2:11434",
+      "total_vram_mb": 8192,
+      "priority": 2
+    }
+  ]
+}
