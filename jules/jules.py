@@ -66,6 +66,7 @@ def _vault_client() -> hvac.Client:
     """Authenticate to Vault using host-level AppRole credentials."""
     client = hvac.Client(
         url=open("/etc/vault/vault_addr").read().strip(),
+        verify="/etc/ssl/certs/ca-certificates.crt",
     )
     client.auth.approle.login(
         role_id=open("/etc/vault/host/role_id").read().strip(),
@@ -80,7 +81,7 @@ def get_jules_api_key():
         client = _vault_client()
         return client.secrets.kv.v2.read_secret_version(
             path="hosts/tuvmcpsrvp01/jules_api"
-        )["data"]["data"]["value"]
+        )["data"]["data"]["value"].strip()
     except Exception as e:
         raise JulesError(f"Failed to retrieve Jules API key from Vault: {e}")
 
