@@ -2,6 +2,7 @@ import pytest
 import json
 import tempfile
 import time
+import requests
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Adjust path to import the main app and other modules
@@ -275,7 +276,7 @@ def test_get_server_port_custom_various_ports():
 
 def test_get_server_port_empty_server_section():
     """
-    Tests that get_server_port returns the default port when server section exists but is empty.
+    Tests that get_server_port returns the default_port when server section exists but is empty.
     """
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
         config_data = {
@@ -519,3 +520,118 @@ def test_ollamahost_load_monitor_config_loaded():
     })
     assert host.load_monitor_url == "http://host:9091"
     assert host.gpu_load_threshold_pct == 75
+
+# ---------------------------------------------------------------------------
+# GPU load monitor polling in update_status()
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def host_with_monitor():
+    """An OllamaHost configured with a load monitor URL."""
+    return OllamaHost({
+        "url": "http://host:11434",
+        "total_vram_mb": 8000,
+        "load_monitor_url": "http://host:9091",
+        "gpu_load_threshold_pct": 80,
+    })
+
+
+def _mock_ollama_responses(mocker, host):
+    """Helper: mock Ollama /api/ps and /api/tags to report host as available."""
+    mocker.patch.object(host, 'check_availability', return_value=True)
+    mocker.patch.object(host, 'update_models_and_vram_from_api')
+    host.available = True
+
+
+def test_update_status_sets_gpu_utilization(mocker, host_with_monitor):
+    """update_status() reads gpu_utilization_pct from load monitor."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"gpu_utilization_pct": 45, "gpus": []}
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 45
+
+
+def test_update_status_clamps_over_100(mocker, host_with_monitor):
+    """Values > 100 are clamped to 100."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"gpu_utilization_pct": 150, "gpus": []}
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 100
+
+
+def test_update_status_load_monitor_unreachable_fails_open(mocker, host_with_monitor):
+    """If load monitor is unreachable, gpu_utilization_pct stays 0 (fail open)."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mocker.patch("requests.get", side_effect=requests.RequestException("refused"))
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 0
+    assert host_with_monitor.available  # Ollama availability unaffected
+
+
+def test_update_status_load_monitor_http_error_fails_open(mocker, host_with_monitor):
+    """HTTP 500 from load monitor → fail open."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 0
+
+
+def test_update_status_malformed_json_fails_open(mocker, host_with_monitor):
+    """Malformed JSON from load monitor → fail open."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.side_effect = ValueError("bad json")
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 0
+
+
+def test_update_status_missing_field_fails_open(mocker, host_with_monitor):
+    """Response missing gpu_utilization_pct field → fail open."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"gpus": []}
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 0
+
+
+def test_update_status_wrong_type_fails_open(mocker, host_with_monitor):
+    """gpu_utilization_pct with wrong type (string) → fail open."""
+    _mock_ollama_responses(mocker, host_with_monitor)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"gpu_utilization_pct": "high", "gpus": []}
+    mocker.patch("requests.get", return_value=mock_resp)
+
+    host_with_monitor.update_status()
+    assert host_with_monitor.gpu_utilization_pct == 0
+
+
+def test_update_status_no_load_monitor_url_no_regression(mocker):
+    """Host without load_monitor_url behaves exactly as before (no requests to monitor)."""
+    host = OllamaHost({"url": "http://host:11434", "total_vram_mb": 8000})
+    mocker.patch.object(host, 'check_availability', return_value=True)
+    mocker.patch.object(host, 'update_models_and_vram_from_api')
+    get_spy = mocker.patch("requests.get")
+
+    host.update_status()
+    # requests.get called only for check_availability (which we stubbed above),
+    # not for any load monitor URL
+    assert host.gpu_utilization_pct == 0
