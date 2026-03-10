@@ -156,8 +156,8 @@ async def test_proxy_routing_and_session_creation(client, mock_host_manager, moc
     response = client.post("/api/chat", json=payload)
 
     assert response.status_code == 200
-    assert "miss. Finding best host for model 'llama3:latest'." in caplog.text
-    assert f"Assigned new host {host2.url} to session." in caplog.text
+    assert "Session miss for model 'llama3:latest'. Finding best host." in caplog.text
+    assert f"Assigned new host {host2.url} to session for model 'llama3:latest'." in caplog.text
 
     assert len(main.sessions) == 1
     session_id = list(main.sessions.keys())[0]
@@ -198,8 +198,8 @@ async def test_rerouting_after_host_disappearance(client, mock_host_manager, moc
 
     client.post("/api/chat", json=payload)
 
-    found_unavailable_log = any(f"Session host {host1.url} is unavailable. Finding a new host." in record.message for record in caplog.records)
-    found_reassigned_log = any(f"Assigned new host {host2.url} to session." in record.message for record in caplog.records)
+    found_unavailable_log = any(f"Session host {host1.url} is unavailable for model 'llama3:latest'. Finding a new host." in record.message for record in caplog.records)
+    found_reassigned_log = any(f"Assigned new host {host2.url} to session for model 'llama3:latest'." in record.message for record in caplog.records)
     assert found_unavailable_log, "Log for unavailable session host not found."
     assert found_reassigned_log, "Did not re-route to the next best host."
 
