@@ -5,6 +5,7 @@ Jules CLI - Command-line wrapper for the Jules AI agent library.
 """
 
 import argparse
+import shutil
 import sys
 import time
 from jules import JulesSession, JulesError, auth_check, list_sessions, VALID_STATES
@@ -148,10 +149,15 @@ Examples:
             if not sessions:
                 print("No sessions found.")
             else:
+                term_width = shutil.get_terminal_size().columns
+                title_width = max(10, term_width - 52)
                 print(f"{'ID':<20} {'State':<30} {'Title'}")
-                print("-" * 70)
+                print("-" * term_width)
                 for s in sessions:
-                    print(f"{s.get('id', ''):<20} {s.get('state', ''):<30} {s.get('title', '')}")
+                    title = s.get('title', '').replace('\n', ' ').replace('\r', '')
+                    if len(title) > title_width:
+                        title = title[:title_width - 3] + "..."
+                    print(f"{s.get('id', ''):<20} {s.get('state', ''):<30} {title}")
 
         elif args.command == "states":
             print("Valid session states:")
