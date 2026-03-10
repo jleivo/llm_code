@@ -1,0 +1,14 @@
+[Unit]
+Description=GPU utilization monitor for Ollama proxy
+After=network.target
+
+[Service]
+Type=simple
+User=gpu_monitor
+WorkingDirectory=/opt/gpu_monitor
+ExecStart=/opt/gpu_monitor/.venv/bin/python /opt/gpu_monitor/gpu_monitor.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
