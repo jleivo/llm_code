@@ -168,3 +168,45 @@ EOF
 sudo chown lunatic:lunatic "$ENV_FILE"
 sudo chmod 600 "$ENV_FILE"
 echo ".env written."
+
+# ── System infrastructure ──────────────────────────────────────────────────────
+
+echo ""
+echo "--- System infrastructure ---"
+
+# rsyslog
+if [[ ! -f /etc/rsyslog.d/discord_bot.conf ]]; then
+    echo "Installing rsyslog config..."
+    sudo cp "$SCRIPT_DIR/dependencies/rsyslog/discord_bot.conf" /etc/rsyslog.d/discord_bot.conf
+    sudo systemctl restart rsyslog
+    echo "rsyslog configured."
+else
+    echo "rsyslog config already present, skipping."
+fi
+
+# logrotate
+if [[ ! -f /etc/logrotate.d/discord_bot ]]; then
+    echo "Installing logrotate config..."
+    sudo cp "$SCRIPT_DIR/dependencies/logrotate/discord_bot" /etc/logrotate.d/discord_bot
+    echo "logrotate configured."
+else
+    echo "logrotate config already present, skipping."
+fi
+
+# systemd service — substitute actual install dir into service file
+echo "Installing systemd service..."
+sed "s|/srv/discord_bot|$INSTALL_DIR|g" "$SCRIPT_DIR/dependencies/lunatic.service" \
+    | sudo tee /usr/lib/systemd/system/lunatic.service > /dev/null
+sudo systemctl daemon-reload
+
+if systemctl is-enabled --quiet lunatic.service 2>/dev/null; then
+    echo "Restarting lunatic.service..."
+    sudo systemctl restart lunatic.service
+else
+    echo "Enabling and starting lunatic.service..."
+    sudo systemctl enable --now lunatic.service
+fi
+
+echo ""
+echo "=== Installation complete ==="
+echo "Bot is running as lunatic.service. Check status with: systemctl status lunatic.service"
