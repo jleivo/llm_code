@@ -1,5 +1,5 @@
 import pytest
-from jules.orchestrator import JulesOrchestrator
+from orchestrator import JulesOrchestrator
 
 @pytest.fixture
 def sample_tasks():

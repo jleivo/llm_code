@@ -33,7 +33,7 @@ VALID_STATES = (
 )
 
 
-def load_config(config_path="jules/jules_config.ini"):
+def load_config(config_path=None):
     """Load configuration from INI file, falling back to defaults.
 
     Args:
@@ -46,6 +46,8 @@ def load_config(config_path="jules/jules_config.ini"):
             - default_executor: str ("jules" or "claude")
             - auto_merge: bool
     """
+    if config_path is None:
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jules_config.ini")
     cp = configparser.ConfigParser()
     cp.read(config_path)
 
@@ -87,16 +89,24 @@ def get_jules_api_key():
 
 
 def get_github_token():
-    """Retrieves the GitHub token from a file or environment variable."""
+    """Retrieves the GitHub token from env var, Vault, or file (in that order)."""
     token = os.getenv("GITHUB_TOKEN")
     if token:
         return token
+    try:
+        client = _vault_client()
+        secret = client.secrets.kv.v2.read_secret_version(
+            path="hosts/tuvmcpsrvp01/github_token"
+        )
+        return secret["data"]["data"]["value"].strip()
+    except Exception:
+        pass
     try:
         with open("github_token.txt", "r") as f:
             return f.read().strip()
     except FileNotFoundError:
         raise JulesError(
-            "GitHub token not found. Set GITHUB_TOKEN env var or create github_token.txt."
+            "GitHub token not found. Set GITHUB_TOKEN env var, configure Vault, or create github_token.txt."
         )
 
 
@@ -216,7 +226,7 @@ class JulesSession:
         if branch is None:
             branch = detect_current_branch()
 
-        source = f"sources/github-{owner}-{repo}"
+        source = f"sources/github/{owner}/{repo}"
 
         data = {
             "prompt": prompt,

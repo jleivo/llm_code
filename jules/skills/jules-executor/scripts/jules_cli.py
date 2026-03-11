@@ -5,9 +5,13 @@ Jules CLI - Command-line wrapper for the Jules AI agent library.
 """
 
 import argparse
+import os
 import shutil
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from jules import JulesSession, JulesError, auth_check, list_sessions, VALID_STATES
 
 

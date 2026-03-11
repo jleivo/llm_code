@@ -1,8 +1,7 @@
 import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
-from jules import JulesSession, JulesError, detect_github_repo, auth_check, list_sessions, VALID_STATES
-from jules.jules import JULES_API_BASE
+from jules import JulesSession, JulesError, detect_github_repo, auth_check, list_sessions, VALID_STATES, JULES_API_BASE
 
 # --- detect_github_repo tests ---
 
@@ -37,7 +36,7 @@ def test_detect_github_repo_no_remote():
 
 @pytest.fixture(autouse=True)
 def mock_api_key(monkeypatch):
-    monkeypatch.setattr("jules.jules.get_jules_api_key", lambda: "fake-api-key")
+    monkeypatch.setattr("jules.get_jules_api_key", lambda: "fake-api-key")
 
 def test_session_create(requests_mock):
     """Create a Jules session with auto-detected repo."""
@@ -61,7 +60,7 @@ def test_session_create(requests_mock):
 
     payload = requests_mock.request_history[0].json()
     assert payload["prompt"] == "Fix the bug"
-    assert payload["sourceContext"]["source"] == "sources/github-myuser-myrepo"
+    assert payload["sourceContext"]["source"] == "sources/github/myuser/myrepo"
     assert payload["sourceContext"]["githubRepoContext"]["startingBranch"] == "main"
     assert payload["requirePlanApproval"] is False
     assert payload["automationMode"] == "AUTO_CREATE_PR"
@@ -135,7 +134,7 @@ def test_session_get_pr_url_no_pr(requests_mock):
 
 def test_session_merge_pr(requests_mock, monkeypatch):
     """Merge PR via GitHub API."""
-    monkeypatch.setattr("jules.jules.get_github_token", lambda: "fake-token")
+    monkeypatch.setattr("jules.get_github_token", lambda: "fake-token")
 
     requests_mock.get(
         "https://jules.googleapis.com/v1alpha/sessions/session-123",
@@ -175,10 +174,8 @@ def test_session_has_pending_question(requests_mock):
 
 def test_load_config_defaults():
     """Load config returns defaults when no file exists."""
-    from jules.jules import load_config
-    import os
+    from jules import load_config
 
-    # Use a non-existent path
     config = load_config("/nonexistent/path/config.ini")
     assert config["max_concurrent_sessions"] == 3
     assert config["poll_interval_seconds"] == 30
@@ -188,7 +185,7 @@ def test_load_config_defaults():
 
 def test_load_config_custom(tmp_path):
     """Load config reads custom values from file."""
-    from jules.jules import load_config
+    from jules import load_config
 
     config_file = tmp_path / "jules_config.ini"
     config_file.write_text(

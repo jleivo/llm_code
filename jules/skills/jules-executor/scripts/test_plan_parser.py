@@ -1,5 +1,5 @@
 import pytest
-from jules.plan_parser import parse_plan
+from plan_parser import parse_plan
 
 SAMPLE_PLAN = """# Feature Implementation Plan
 
