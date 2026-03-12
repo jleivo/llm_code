@@ -24,14 +24,11 @@ ln -s /path/to/jules-executor ~/.agents/skills/jules-executor
 cp -r /path/to/jules-executor ~/.agents/skills/jules-executor
 ```
 
-Install Python dependencies:
-
-```bash
-pip install -r ~/.agents/skills/jules-executor/scripts/requirements.txt
-```
+Dependencies are installed automatically on first run via the `jules-run` wrapper — no manual `pip install` needed.
 
 ## Prerequisites
 
+- **Python 3** with `venv` module (deps auto-installed into skill-local venv)
 - **Vault access**: Jules API key at `hosts/tuvmcpsrvp01/jules_api`, GitHub token at `hosts/tuvmcpsrvp01/github_token`
 - **Vault AppRole**: Credentials at `/etc/vault/host/{role_id,secret_id}`
 - **GitHub remote**: The repo must have a GitHub remote (`git remote -v`)
@@ -44,18 +41,20 @@ Invoke with `/jules <plan-file>` in Claude Code. The skill handles everything au
 
 ### Standalone
 
+All commands use the `jules-run` wrapper which manages its own venv:
+
 ```bash
 # Interactive mode — runs until all tasks complete
-python3 scripts/run_plan.py docs/plans/my-feature.md
+scripts/jules-run run_plan.py docs/plans/my-feature.md
 
 # Poll-once mode — single cycle for cron/automation
-python3 scripts/run_plan.py docs/plans/my-feature.md --poll-once --state-file /tmp/jules_state.json
+scripts/jules-run run_plan.py docs/plans/my-feature.md --poll-once --state-file /tmp/jules_state.json
 
 # CLI commands
-python3 scripts/jules_cli.py auth              # Verify API credentials
-python3 scripts/jules_cli.py create --prompt "Fix bug"  # Create a session
-python3 scripts/jules_cli.py status --session-id <id>   # Check status
-python3 scripts/jules_cli.py list --state CODING        # List sessions
+scripts/jules-run jules_cli.py auth              # Verify API credentials
+scripts/jules-run jules_cli.py create --prompt "Fix bug"  # Create a session
+scripts/jules-run jules_cli.py status --session-id <id>   # Check status
+scripts/jules-run jules_cli.py list --state CODING        # List sessions
 ```
 
 ### Plan File Format

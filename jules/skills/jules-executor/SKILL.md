@@ -12,15 +12,16 @@ Dispatches tasks from a markdown implementation plan to Jules AI sessions, polls
 
 ## Quick Start
 
-1. Install dependencies: `pip install -r <skill-path>/scripts/requirements.txt`
-2. Verify auth: `python3 <skill-path>/scripts/jules_cli.py auth`
-3. Run the plan: `python3 <skill-path>/scripts/run_plan.py <plan-file>`
+All commands go through the `jules-run` wrapper which auto-creates a venv inside the skill on first use. No manual `pip install` or venv activation needed.
+
+1. Verify auth: `<skill-path>/scripts/jules-run jules_cli.py auth`
+2. Run the plan: `<skill-path>/scripts/jules-run run_plan.py <plan-file>`
 
 Where `<skill-path>` is the directory containing this SKILL.md.
 
 ## Prerequisites
 
-- Python deps installed in active venv: `hvac`, `requests`
+- Python 3 with `venv` module available on the system (deps are auto-installed)
 - Vault access for Jules API key (`hosts/tuvmcpsrvp01/jules_api`) and GitHub token
 - GitHub remote configured on the repo (`git remote -v` must show github.com)
 - Plan file with `### Task N: Title` headers (see plan_parser.py for format)
@@ -29,26 +30,20 @@ Where `<skill-path>` is the directory containing this SKILL.md.
 
 ### Interactive mode (stays running until all tasks complete)
 ```bash
-python3 <skill-path>/scripts/run_plan.py docs/plans/my-plan.md
+<skill-path>/scripts/jules-run run_plan.py docs/plans/my-plan.md
 ```
 
 ### Poll-once mode (single cycle, for cron or /loop)
 ```bash
-python3 <skill-path>/scripts/run_plan.py docs/plans/my-plan.md \
+<skill-path>/scripts/jules-run run_plan.py docs/plans/my-plan.md \
   --poll-once --state-file /tmp/jules_state.json
-```
-
-### Configuration override
-```bash
-python3 <skill-path>/scripts/run_plan.py docs/plans/my-plan.md \
-  --config <skill-path>/scripts/jules_config.ini
 ```
 
 ## Monitoring with /loop
 
 Use Claude Code's `/loop` to poll periodically:
 ```
-/loop 60 python3 <skill-path>/scripts/run_plan.py <plan-file> --poll-once --state-file /tmp/jules_state.json
+/loop 60 <skill-path>/scripts/jules-run run_plan.py <plan-file> --poll-once --state-file /tmp/jules_state.json
 ```
 
 ## Handling Jules Questions
@@ -67,11 +62,11 @@ Tasks with `executor: claude` are not sent to Jules. Instead, dispatch them usin
 ## CLI Commands
 
 ```bash
-python3 <skill-path>/scripts/jules_cli.py create --prompt "Fix the bug"
-python3 <skill-path>/scripts/jules_cli.py status --session-id <id>
-python3 <skill-path>/scripts/jules_cli.py chat --session-id <id>
-python3 <skill-path>/scripts/jules_cli.py merge --session-id <id>
-python3 <skill-path>/scripts/jules_cli.py list [--state CODING]
+<skill-path>/scripts/jules-run jules_cli.py create --prompt "Fix the bug"
+<skill-path>/scripts/jules-run jules_cli.py status --session-id <id>
+<skill-path>/scripts/jules-run jules_cli.py chat --session-id <id>
+<skill-path>/scripts/jules-run jules_cli.py merge --session-id <id>
+<skill-path>/scripts/jules-run jules_cli.py list [--state CODING]
 ```
 
 ## Red Flags
