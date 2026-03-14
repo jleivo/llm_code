@@ -2,6 +2,12 @@
 
 All notable changes to update scripts will be documented in this file.
 
+## [1.2.0] - 2026-03-14
+
+### Changed
+- Replaced `.env` file secret loading with HashiCorp Vault AppRole authentication
+- API key now fetched live from `secret/hosts/<hostname>/open_terminal_apikey` on each run
+
 ## [1.0.0] - 2026-03-07
 
 ### Added
