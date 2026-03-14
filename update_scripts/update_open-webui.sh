@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
-# version: 1.1.0
+# version: 1.2.0
 set -euo pipefail
 
-# Load configuration from user's home directory
-CONFIG_DIR="${HOME}/.openterminal"
-CONFIG_FILE="${CONFIG_DIR}/.env"
+# --- Vault authentication ---
+VAULT_ADDR=$(cat /etc/vault/vault_addr)
+CREDS_DIR=/etc/vault/host
+export VAULT_ADDR
 
-if [[ -f "$CONFIG_FILE" ]]; then
-    # shellcheck source=/dev/null
-    source "$CONFIG_FILE"
-fi
+VAULT_TOKEN=$(vault write -field=token auth/approle/login \
+    role_id="$(cat "${CREDS_DIR}/role_id")" \
+    secret_id="$(cat "${CREDS_DIR}/secret_id")")
+export VAULT_TOKEN
+# --- end Vault authentication ---
 
-OPEN_TERMINAL_API_KEY="${OPEN_TERMINAL_API_KEY:-}"
-
-if [[ -z "$OPEN_TERMINAL_API_KEY" ]]; then
-    echo "[ERROR] OPEN_TERMINAL_API_KEY not set."
-    echo "[ERROR] Please create $CONFIG_FILE with:"
-    echo "  OPEN_TERMINAL_API_KEY=your-secret-key"
-    exit 1
-fi
+OPEN_TERMINAL_API_KEY=$(vault kv get -field=value "secret/hosts/$(hostname)/open_terminal_apikey")
 
 # Network configuration
 NETWORK_NAME="open-webui-network"
@@ -98,6 +93,8 @@ update_container() {
         echo "[OK] Container $container_name is running and up-to-date."
     fi
 }
+
+echo "[INFO] Analyzing containers for updates..."
 
 # Update open-webui
 update_container "$WEBUI_IMG" "$WEBUI_CONTAINER_NAME" \
