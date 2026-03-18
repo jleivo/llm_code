@@ -62,3 +62,40 @@ setup() {
     [[ "$output" != *"unbound variable"* ]]
     rm -f "$tmpfile"
 }
+
+# --- register_container ---
+
+@test "register_container stores name and image" {
+    register_container "myapp" "myimage:latest"
+    [ "${_CONTAINER_NAMES[0]}" = "myapp" ]
+    [ "${_CONTAINER_IMAGES[myapp]}" = "myimage:latest" ]
+}
+
+@test "register_container stores docker options" {
+    register_container "myapp" "myimage:latest" -p 8080:80 --restart always
+    [ "${_CONTAINER_OPTS_myapp[0]}" = "-p" ]
+    [ "${_CONTAINER_OPTS_myapp[1]}" = "8080:80" ]
+    [ "${_CONTAINER_OPTS_myapp[2]}" = "--restart" ]
+    [ "${_CONTAINER_OPTS_myapp[3]}" = "always" ]
+}
+
+@test "register_container sanitizes hyphens in name for array variable" {
+    register_container "open-webui" "ghcr.io/open-webui/open-webui:main" -p 4000:8080
+    [ "${_CONTAINER_NAMES[0]}" = "open-webui" ]
+    [ "${_CONTAINER_IMAGES[open_webui]}" = "ghcr.io/open-webui/open-webui:main" ]
+    [ "${_CONTAINER_OPTS_open_webui[0]}" = "-p" ]
+}
+
+@test "register_container supports multiple containers" {
+    register_container "app1" "img1:latest"
+    register_container "app2" "img2:latest"
+    [ "${#_CONTAINER_NAMES[@]}" -eq 2 ]
+    [ "${_CONTAINER_NAMES[1]}" = "app2" ]
+}
+
+@test "register_container exits non-zero after run_updates was called" {
+    _RUN_UPDATES_CALLED=true
+    run register_container "late" "img:tag"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"[ERROR]"* ]]
+}

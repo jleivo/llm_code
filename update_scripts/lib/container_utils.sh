@@ -39,3 +39,28 @@ source_gpu_config() {
     # shellcheck disable=SC1090
     source "$config_path"
 }
+
+# register_container <name> <image> [docker_opts...]
+# Registers a container for the next run_updates call.
+# -d and --name are added automatically by run_updates; do not include them here.
+register_container() {
+    if [[ "$_RUN_UPDATES_CALLED" == true ]]; then
+        echo "[ERROR] register_container called after run_updates" >&2
+        return 1
+    fi
+
+    local name="$1"
+    local image="$2"
+    shift 2
+    local sanitized="${name//-/_}"
+
+    _CONTAINER_NAMES+=("$name")
+    _CONTAINER_IMAGES["$sanitized"]="$image"
+
+    # Dynamically declare and populate a global array for this container's options.
+    # shellcheck disable=SC2178
+    declare -ga "_CONTAINER_OPTS_${sanitized}"
+    local -n _cu_reg_ref="_CONTAINER_OPTS_${sanitized}"
+    _cu_reg_ref=("$@")
+    unset -n _cu_reg_ref
+}
