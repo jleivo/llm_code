@@ -15,6 +15,7 @@ set -euo pipefail
 # shellcheck source=lib/container_utils.sh
 source "$(dirname "$0")/lib/container_utils.sh"
 
+# shellcheck disable=SC2119  # no arg is intentional: uses _GPU_CONFIG_FILE default
 source_gpu_config
 
 OLLAMA_VERSION="0.17.4"
