@@ -1,18 +1,14 @@
 #!/bin/bash
 #
 # Author: Juha Leivo
-# Version: 1.3.1
+# Version: 1.0.1
 # Date: 2026-03-18
 #
 # Deploy script(s) to server, updating only if changed.
 #
 # History
-#   1.0.0 - 2025-10-12, initial version, script to copy rai-dl.sh to tuvdowsrvp01 if needed
-#   1.1.0 - 2025-11-03, added remote directory existence check before creation, changed hardcoded
-#                   SSH user to a variable
-#   1.2.0 - 2025-11-03, add sudo fallback logic for scp if permission denied
-#   1.3.0 - 2026-03-17, deploy container_utils library, update scripts, and GPU_config
-#   1.3.1 - 2026-03-18, sudo fallback for remote mkdir when permission denied
+#   1.0.0 - 2026-03-17, deploy container_utils library, update scripts, and GPU_config
+#   1.0.1 - 2026-03-18, sudo fallback for remote mkdir when permission denied
 
 tgt_server="ollama.intra.leivo"
 ssh_user="juha"
@@ -20,7 +16,7 @@ ssh_user="juha"
 #   src                 -> copied to remote as ~/.local/bin/$(basename src)
 #   src:dest            -> copied to remote path 'dest' (as provided)
 # Local src paths may be absolute or relative to this repository root.
-files_to_update='update_ollama.sh:~/.local/bin/ update_open-webui.sh:~/.local/bin/ lib/container_utils.sh:~/.local/bin/lib/ GPU_config:/etc/llm_code/GPU_config'
+files_to_update='update_ollama.sh:~/.local/bin/ lib/container_utils.sh:~/.local/bin/lib/ GPU_config:/etc/llm_code/GPU_config'
 
 # test can one connect
 if ping -c 1 -W 1 $tgt_server |grep "^rtt" > /dev/null; then
