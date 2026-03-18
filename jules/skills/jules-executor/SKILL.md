@@ -22,7 +22,7 @@ Where `<skill-path>` is the directory containing this SKILL.md.
 ## Prerequisites
 
 - Python 3 with `venv` module available on the system (deps are auto-installed)
-- Vault access for Jules API key (`hosts/tuvmcpsrvp01/jules_api`) and GitHub token
+- Vault access for Jules API key (`hosts/<hostname>/jules_api`) and GitHub token
 - GitHub remote configured on the repo (`git remote -v` must show github.com)
 - Plan file with `### Task N: Title` headers (see plan_parser.py for format)
 
