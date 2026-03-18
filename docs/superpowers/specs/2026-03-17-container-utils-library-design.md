@@ -108,14 +108,7 @@ MY_SECRET=$(get_secret "my_secret_name")
 
 **`source_gpu_config [path]`**
 
-Sources the `GPU_config` file. If no path is given or an empty string is passed, defaults to a path computed from the library file's own location using `${BASH_SOURCE[0]}`:
-
-```bash
-local default_path
-default_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../GPU_config"
-```
-
-Since the library lives at `update_scripts/lib/container_utils.sh`, this resolves to `update_scripts/GPU_config` regardless of the calling script's working directory or how it was invoked (relative path, absolute path, cron, systemd).
+Sources the `GPU_config` file. If no path is given or an empty string is passed, defaults to `/etc/llm_code/GPU_config` — the standard system location for host-specific GPU configuration, consistent with FHS `/etc/` conventions and aligned with how Vault credentials are stored under `/etc/vault/`.
 
 After sourcing, variables `GPU0`–`GPU4` are available in the calling script. The function does not validate that all five variables were set — if `GPU_config` is malformed, the caller is responsible for detecting missing variables. Exits non-zero with `[ERROR]` if the resolved path does not exist.
 
@@ -292,9 +285,9 @@ The inline `update_container` function and Vault auth block are removed entirely
 
 ---
 
-### `update_scripts/GPU_config`
+### GPU_config
 
-No changes. Contains GPU UUID variables `GPU0`–`GPU4`.
+The file `update_scripts/GPU_config` is moved to `/etc/llm_code/GPU_config`. The `/etc/llm_code/` directory must be created if it does not exist. File content is unchanged — it contains GPU UUID variables `GPU0`–`GPU4`. The old `update_scripts/GPU_config` file is deleted after the move.
 
 ---
 
@@ -327,7 +320,7 @@ The existing CHANGELOG.md uses a flat format with `## [version] - date` headings
 | `update_scripts/lib/container_utils.sh` | Create | 1.0.0 |
 | `update_scripts/update_ollama.sh` | Refactor | 2.0.0 |
 | `update_scripts/update_open-webui.sh` | Refactor | 2.0.0 |
-| `update_scripts/GPU_config` | No change | — |
+| `update_scripts/GPU_config` | Move to `/etc/llm_code/GPU_config` | — |
 | `update_scripts/CHANGELOG.md` | Prepend 2.0.0 entry | — |
 
 ---
