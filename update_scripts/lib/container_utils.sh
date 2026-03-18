@@ -65,3 +65,33 @@ register_container() {
     _cu_reg_ref=("$@")
     unset -n _cu_reg_ref
 }
+
+# get_secret <name>
+# Fetches secret from Vault path secret/hosts/<hostname>/<name>.
+# Vault login is performed lazily on first call; token is cached in _VAULT_TOKEN.
+# Only the secret value is written to stdout; all diagnostics go to stderr.
+get_secret() {
+    local name="$1"
+
+    if [[ -z "$_VAULT_TOKEN" ]]; then
+        [[ -f "$_VAULT_ADDR_FILE" && -s "$_VAULT_ADDR_FILE" ]] \
+            || { echo "[ERROR] Vault address file not found: $_VAULT_ADDR_FILE" >&2; exit 1; }
+        [[ -f "$_VAULT_CREDS_DIR/role_id" ]] \
+            || { echo "[ERROR] role_id not found in $_VAULT_CREDS_DIR" >&2; exit 1; }
+        [[ -f "$_VAULT_CREDS_DIR/secret_id" ]] \
+            || { echo "[ERROR] secret_id not found in $_VAULT_CREDS_DIR" >&2; exit 1; }
+
+        local vault_addr
+        vault_addr=$(cat "$_VAULT_ADDR_FILE")
+        export VAULT_ADDR="$vault_addr"
+
+        _VAULT_TOKEN=$(vault write -field=token auth/approle/login \
+            role_id="$(cat "$_VAULT_CREDS_DIR/role_id")" \
+            secret_id="$(cat "$_VAULT_CREDS_DIR/secret_id")") \
+            || { echo "[ERROR] Vault login failed" >&2; exit 1; }
+        export VAULT_TOKEN="$_VAULT_TOKEN"
+    fi
+
+    vault kv get -field=value "secret/hosts/$(hostname)/${name}" \
+        || { echo "[ERROR] Failed to get secret: $name" >&2; exit 1; }
+}

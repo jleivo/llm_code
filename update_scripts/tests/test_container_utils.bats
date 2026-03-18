@@ -99,3 +99,90 @@ setup() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"[ERROR]"* ]]
 }
+
+# --- get_secret ---
+# Tests override _VAULT_ADDR_FILE and _VAULT_CREDS_DIR (state vars in the library)
+# and inject a mock vault binary via PATH. Everything runs in bash -c subshells
+# to isolate state and capture stderr alongside stdout.
+
+@test "get_secret returns secret value from vault" {
+    local mock_bin vault_dir
+    mock_bin="$(mktemp -d)"
+    vault_dir="$(mktemp -d)"
+    echo "http://127.0.0.1:8200" > "$vault_dir/vault_addr"
+    mkdir -p "$vault_dir/host"
+    echo "test-role-id"   > "$vault_dir/host/role_id"
+    echo "test-secret-id" > "$vault_dir/host/secret_id"
+    cat > "$mock_bin/vault" << 'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "write" ]]; then echo "test-token"; exit 0; fi
+if [[ "$1" == "kv"    ]]; then echo "my-secret-value"; exit 0; fi
+EOF
+    chmod +x "$mock_bin/vault"
+
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        _VAULT_ADDR_FILE='$vault_dir/vault_addr'
+        _VAULT_CREDS_DIR='$vault_dir/host'
+        get_secret 'mykey' 2>/dev/null
+    "
+    [ "$status" -eq 0 ]
+    [ "$output" = "my-secret-value" ]
+    rm -rf "$mock_bin" "$vault_dir"
+}
+
+@test "get_secret exits non-zero when vault_addr file is missing" {
+    local mock_bin vault_dir
+    mock_bin="$(mktemp -d)"
+    vault_dir="$(mktemp -d)"
+    # vault_addr intentionally NOT created
+
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        _VAULT_ADDR_FILE='$vault_dir/vault_addr'
+        _VAULT_CREDS_DIR='$vault_dir/host'
+        get_secret 'mykey' 2>&1
+    "
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"[ERROR]"* ]]
+    rm -rf "$mock_bin" "$vault_dir"
+}
+
+@test "get_secret caches vault token — vault write called only once for two calls" {
+    local mock_bin vault_dir call_count_file
+    mock_bin="$(mktemp -d)"
+    vault_dir="$(mktemp -d)"
+    call_count_file="$(mktemp)"
+    echo "0" > "$call_count_file"
+    echo "http://127.0.0.1:8200" > "$vault_dir/vault_addr"
+    mkdir -p "$vault_dir/host"
+    echo "test-role-id"   > "$vault_dir/host/role_id"
+    echo "test-secret-id" > "$vault_dir/host/secret_id"
+    cat > "$mock_bin/vault" << EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "write" ]]; then
+    count=\$(cat "$call_count_file")
+    echo \$((count + 1)) > "$call_count_file"
+    echo "cached-token"
+    exit 0
+fi
+if [[ "\$1" == "kv" ]]; then echo "value"; exit 0; fi
+EOF
+    chmod +x "$mock_bin/vault"
+
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        _VAULT_ADDR_FILE='$vault_dir/vault_addr'
+        _VAULT_CREDS_DIR='$vault_dir/host'
+        get_secret 'key1' >/dev/null 2>/dev/null
+        get_secret 'key2' >/dev/null 2>/dev/null
+        cat '$call_count_file'
+    "
+    [ "$status" -eq 0 ]
+    [ "$output" -eq 1 ]
+    rm -rf "$mock_bin" "$vault_dir"
+    rm -f "$call_count_file"
+}
