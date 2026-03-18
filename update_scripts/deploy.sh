@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Author: Juha Leivo
-# Version: 1.3.0
-# Date: 2026-03-17
+# Version: 1.3.1
+# Date: 2026-03-18
 #
 # Deploy script(s) to server, updating only if changed.
 #
@@ -12,8 +12,9 @@
 #                   SSH user to a variable
 #   1.2.0 - 2025-11-03, add sudo fallback logic for scp if permission denied
 #   1.3.0 - 2026-03-17, deploy container_utils library, update scripts, and GPU_config
+#   1.3.1 - 2026-03-18, sudo fallback for remote mkdir when permission denied
 
-tgt_server="10.10.1.50"
+tgt_server="ollama.intra.leivo"
 ssh_user="juha"
 # files_to_update can contain space-separated entries. Each entry may be:
 #   src                 -> copied to remote as ~/.local/bin/$(basename src)
@@ -124,10 +125,13 @@ for entry in $files_to_update; do
         planned_actions+=("ensure remote directory $remote_dir on $tgt_server")
         if [ $DRY_RUN -eq 0 ]; then
             if ! mkdir_out=$(ssh "$ssh_user@$tgt_server" "mkdir -p $remote_dir" 2>&1); then
-                msg="Failed to create remote directory $remote_dir on $tgt_server: $mkdir_out"
-                echo "Error: $msg"
-                failures+=("$msg")
-                continue
+                echo "mkdir failed, retrying with sudo"
+                if ! ssh -t "$ssh_user@$tgt_server" "sudo mkdir -p $remote_dir" 2>&1; then
+                    msg="Failed to create remote directory $remote_dir on $tgt_server: $mkdir_out"
+                    echo "Error: $msg"
+                    failures+=("$msg")
+                    continue
+                fi
             fi
             performed_actions+=("created remote directory $remote_dir on $tgt_server")
         fi
