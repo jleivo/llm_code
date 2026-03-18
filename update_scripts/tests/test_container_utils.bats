@@ -186,3 +186,132 @@ EOF
     rm -rf "$mock_bin" "$vault_dir"
     rm -f "$call_count_file"
 }
+
+# --- run_updates ---
+# Note: run_updates sends all log output to stderr. Tests use bash -c subshells
+# with 2>&1 to merge stderr into stdout so bats $output captures log messages.
+# register_container is called inside the subshell to keep state consistent.
+
+@test "run_updates with no containers logs WARN and returns 0" {
+    local mock_bin
+    mock_bin="$(mktemp -d)"
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        run_updates 2>&1
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[WARN]"* ]]
+    [[ "$output" == *"No containers registered"* ]]
+    rm -rf "$mock_bin"
+}
+
+@test "run_updates skips restart when image unchanged and container running" {
+    local mock_bin
+    mock_bin="$(mktemp -d)"
+    cat > "$mock_bin/docker" << 'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "image inspect"*) echo "sha256:same" ;;
+    "pull"*)          echo "Status: up to date" ;;
+    "ps"*)            echo "running123" ;;
+    "image prune"*)   echo "pruned"; exit 0 ;;
+    *)                exit 0 ;;
+esac
+EOF
+    chmod +x "$mock_bin/docker"
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        register_container 'myapp' 'img:latest' --restart always
+        run_updates 2>&1
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"up-to-date"* ]]
+    rm -rf "$mock_bin"
+}
+
+@test "run_updates restarts container when image changes" {
+    local mock_bin flag_file
+    mock_bin="$(mktemp -d)"
+    flag_file="${mock_bin}/pulled"
+    cat > "$mock_bin/docker" << EOF
+#!/usr/bin/env bash
+case "\$1 \$2" in
+    "image inspect"*)
+        [[ -f "$flag_file" ]] && echo "sha256:new" || echo "sha256:old" ;;
+    "pull"*)
+        touch "$flag_file"; echo "Status: Pull complete" ;;
+    "ps"*)       echo "running123" ;;
+    "inspect"*)  exit 0 ;;
+    "stop"*)     exit 0 ;;
+    "rm"*)       exit 0 ;;
+    "run"*)      echo "newid"; exit 0 ;;
+    "image prune"*) echo "pruned"; exit 0 ;;
+    *)           exit 0 ;;
+esac
+EOF
+    chmod +x "$mock_bin/docker"
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        register_container 'myapp' 'img:latest' --restart always
+        run_updates 2>&1
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[STOP]"* ]]
+    [[ "$output" == *"[RUN]"* ]]
+    [[ "$output" == *"Image prune complete"* ]]
+    rm -rf "$mock_bin"
+}
+
+@test "run_updates starts container when not running even if image unchanged" {
+    local mock_bin
+    mock_bin="$(mktemp -d)"
+    cat > "$mock_bin/docker" << 'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "image inspect"*) echo "sha256:same" ;;
+    "pull"*)          echo "Status: up to date" ;;
+    "ps"*)            echo "" ;;   # not running
+    "inspect"*)       exit 1 ;;   # does not exist
+    "run"*)           echo "newid"; exit 0 ;;
+    "image prune"*)   echo "pruned"; exit 0 ;;
+    *)                exit 0 ;;
+esac
+EOF
+    chmod +x "$mock_bin/docker"
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        register_container 'myapp' 'img:latest' --restart always
+        run_updates 2>&1
+    "
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[RUN]"* ]]
+    rm -rf "$mock_bin"
+}
+
+@test "run_updates sets non-zero exit and skips prune on pull failure" {
+    local mock_bin
+    mock_bin="$(mktemp -d)"
+    cat > "$mock_bin/docker" << 'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "image inspect"*) echo "sha256:old" ;;
+    "pull"*)          echo "Error: pull failed"; exit 1 ;;
+    *)                exit 0 ;;
+esac
+EOF
+    chmod +x "$mock_bin/docker"
+    run bash -c "
+        export PATH='$mock_bin':\$PATH
+        source '${LIB}'
+        register_container 'myapp' 'img:latest'
+        run_updates 2>&1
+    "
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"[ERROR]"* ]]
+    [[ "$output" != *"Image prune"* ]]
+    rm -rf "$mock_bin"
+}

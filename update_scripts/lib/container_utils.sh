@@ -95,3 +95,80 @@ get_secret() {
     vault kv get -field=value "secret/hosts/$(hostname)/${name}" \
         || { echo "[ERROR] Failed to get secret: $name" >&2; exit 1; }
 }
+
+# run_updates
+# Drives the full update lifecycle for all registered containers.
+# Runs docker image prune once at end if all updates succeeded.
+# Must be called exactly once per script.
+run_updates() {
+    _RUN_UPDATES_CALLED=true
+
+    if [[ "${#_CONTAINER_NAMES[@]}" -eq 0 ]]; then
+        echo "[WARN] No containers registered." >&2
+        return 0
+    fi
+
+    local _all_ok=true
+
+    for name in "${_CONTAINER_NAMES[@]}"; do
+        local sanitized="${name//-/_}"
+        local image="${_CONTAINER_IMAGES[$sanitized]}"
+
+        # Record old image ID
+        local old_id
+        old_id=$(docker image inspect "$image" --format '{{.Id}}' 2>/dev/null || echo "")
+
+        # Pull image
+        local pull_out pull_rc
+        pull_out=$(docker pull "$image" 2>&1)
+        pull_rc=$?
+
+        if (( pull_rc != 0 )); then
+            echo "[ERROR] docker pull failed for $image (exit $pull_rc)" >&2
+            echo "$pull_out" >&2
+            _all_ok=false
+            continue
+        fi
+
+        # Record new image ID
+        local new_id
+        new_id=$(docker image inspect "$image" --format '{{.Id}}')
+
+        # Check if container is running
+        local container_running=false
+        if [[ -n "$(docker ps -q -f "name=$name" 2>/dev/null)" ]]; then
+            container_running=true
+        fi
+
+        if [[ "$old_id" != "$new_id" ]] || [[ "$container_running" == false ]]; then
+            # Stop and remove if container exists
+            if docker inspect "$name" >/dev/null 2>&1; then
+                echo "[STOP] Stopping container $name ..." >&2
+                docker stop "$name" 2>/dev/null || true
+                docker rm   "$name" 2>/dev/null || true
+            fi
+
+            # Start container using nameref to options array
+            echo "[RUN] Starting new container $name ..." >&2
+            # shellcheck disable=SC2178
+            declare -n _cu_opts_ref="_CONTAINER_OPTS_${sanitized}"
+            if docker run -d --name "$name" "${_cu_opts_ref[@]}" "$image" >/dev/null; then
+                echo "[OK] $name started." >&2
+            else
+                echo "[ERROR] Failed to start $name" >&2
+                _all_ok=false
+            fi
+            unset -n _cu_opts_ref
+        else
+            echo "[OK] $name is up-to-date, skipping restart." >&2
+        fi
+    done
+
+    if [[ "$_all_ok" == true ]]; then
+        docker image prune -f >/dev/null
+        echo "[OK] Image prune complete." >&2
+    else
+        echo "[WARN] Skipping image prune due to update errors." >&2
+        exit 1
+    fi
+}
