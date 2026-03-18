@@ -3,12 +3,13 @@
 # Shared library for container update scripts. Source this file; do not execute directly.
 #
 # History
-#   1.0.0 - 2026-03-18,     Initial release
+#   1.0.0 - 2026-03-17,     Initial release
 #
 
 # Require bash 4.3+ for declare -n nameref support
 if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3) )); then
     echo "[ERROR] container_utils.sh requires bash 4.3+" >&2
+    # shellcheck disable=SC2317  # exit 1 is reachable when script is executed directly
     return 1 2>/dev/null || exit 1
 fi
 
