@@ -54,19 +54,19 @@ Roster models support full native subagent features: foreground/background execu
 For models not in the roster, dispatch via Bash:
 
 ```bash
-claude -p "<task prompt>" --model <model-id> --output-format stream-json
+claude -p "<task prompt>" --model <model-id> --output-format text
 ```
 
 **Execution model:**
 - Runs via Bash tool with `run_in_background: true`
 - Working directory is inherited (access to same codebase)
-- Full tool access by default
-- Output checked via `TaskOutput` (auto-notified on completion)
+- Full tool access by default (CLI dispatch inherits no permission grants from the parent session — the dispatched instance starts with its own default permission mode)
+- Output checked via `TaskOutput` with the background task ID (auto-notified on completion)
 
 **Workflow:**
 1. User requests dispatch to a model not in roster
 2. Skill asks: add to roster (persistent) or one-off CLI dispatch?
-3. If roster: creates agent file via `manage-roster.sh`, informs user to restart session
+3. If roster: creates agent file via `manage-roster.sh` AND does one-off CLI dispatch now (user gets immediate results; roster becomes available natively after session restart)
 4. If one-off: constructs `claude -p` command, runs in background
 
 ### 3. Roster Management Script
@@ -77,6 +77,12 @@ claude -p "<task prompt>" --model <model-id> --output-format stream-json
 - `add <short-name> <full-model-id>` — creates agent file from template in `~/.claude/agents/`
 - `remove <short-name>` — deletes the agent file
 - `list` — shows current roster (agent files with their model IDs)
+
+**Input validation:**
+- `short-name` must match `[a-z0-9-]+` (lowercase alphanumeric and hyphens only)
+- `full-model-id` must be non-empty
+- `add` with an existing short-name overwrites (idempotent — allows updating model ID)
+- All operations validate argument count and exit with a clear error message on failure
 
 **Template source:** `~/.claude/skills/model-dispatch/references/agent-template.md`
 
@@ -129,8 +135,8 @@ User requests task on model X
     │   │
     │   └── NO → Ask: add to roster or one-off?
     │       ├── ADD TO ROSTER → Run manage-roster.sh add
-    │       │                   Inform: restart session to use natively
-    │       │                   Offer: one-off CLI dispatch now?
+    │       │                   Do one-off CLI dispatch now
+    │       │                   Note: available natively after session restart
     │       │
     │       └── ONE-OFF → Run claude -p via Bash background
     │                     If periodic monitoring requested → CronCreate
@@ -146,6 +152,14 @@ User requests task on model X
 - **Task queuing or orchestration** — single task dispatch only (jules-executor handles multi-task)
 - **Persistent task history** — no logging beyond the session
 - **Model-specific tool restrictions** — all models get full toolset
+
+## Error Handling
+
+- **Model unavailable** (Ollama not running, model not pulled): CLI dispatch fails with non-zero exit. Skill reports the error output to user and suggests checking model availability (`ollama list`, server status).
+- **Duplicate roster entry**: `manage-roster.sh add` overwrites existing file (idempotent). No error.
+- **Invalid short-name**: Script rejects names not matching `[a-z0-9-]+` with a clear error.
+- **CLI dispatch timeout**: Bash background tasks have a configurable timeout (default 10 minutes via Bash tool). On timeout, skill reports the task timed out and suggests increasing timeout or simplifying the task.
+- **Agent file I/O failure**: Script exits non-zero with error message. Skill reports the failure.
 
 ## Dependencies
 
