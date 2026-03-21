@@ -93,3 +93,26 @@ teardown() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"Usage"* ]]
 }
+
+@test "add rejects model id containing pipe character" {
+    run bash "$SCRIPT" add "good-name" "bad|model:latest"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"|"* ]]
+}
+
+@test "list succeeds when non-roster md file has no model field" {
+    echo "# just a readme" > "$TEST_AGENTS_DIR/readme.md"
+    bash "$SCRIPT" add test-model "test-model-id:latest"
+    run bash "$SCRIPT" list
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"test-model"* ]]
+}
+
+@test "list shows model id values not just names" {
+    bash "$SCRIPT" add alpha "alpha-model:v1"
+    bash "$SCRIPT" add beta "beta-model:v2"
+    run bash "$SCRIPT" list
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"alpha-model:v1"* ]]
+    [[ "$output" == *"beta-model:v2"* ]]
+}
