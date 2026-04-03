@@ -8,74 +8,34 @@ description: Execute implementation plans by dispatching tasks to Jules (Google'
 
 # Jules Executor
 
-Dispatches tasks from a markdown implementation plan to Jules AI sessions, polls for progress, auto-merges completed PRs, and prints a live dashboard. Tasks marked `executor: claude` are handed off via `superpowers:subagent-driven-development`.
+Dispatches tasks from a markdown implementation plan to Jules AI sessions. Tasks marked `executor: claude` are handed off via `superpowers:subagent-driven-development`.
 
-## Quick Start
+## Steps
 
-All commands go through the `jules-run` wrapper which auto-creates a venv inside the skill on first use. No manual `pip install` or venv activation needed.
+Follow these steps when the user invokes `/jules <plan-file>`:
 
-1. Verify auth: `<skill-path>/scripts/jules-run jules_cli.py auth`
-2. Run the plan: `<skill-path>/scripts/jules-run run_plan.py <plan-file>`
+1. **Verify prerequisites**
+   - Confirm `<plan-file>` argument was provided. If not, ask the user for the plan file path.
+   - Run `<skill-path>/scripts/jules-run jules_cli.py auth` to verify Vault and API access.
 
-Where `<skill-path>` is the directory containing this SKILL.md.
+2. **Launch the plan**
+   - Run `<skill-path>/scripts/jules-run run_plan.py <plan-file>` in interactive mode.
+   - This parses the plan, creates Jules sessions respecting `depends:` ordering and concurrency limits, polls for progress, and auto-merges completed PRs.
+   - Present the dashboard output to the user after each poll cycle.
 
-## Prerequisites
+3. **Handle `executor: claude` tasks**
+   - Tasks marked `executor: claude` are not sent to Jules.
+   - When their dependencies are met, dispatch them using `superpowers:subagent-driven-development` with the task body as the prompt.
 
-- Python 3 with `venv` module available on the system (deps are auto-installed)
-- Vault access for Jules API key (`hosts/tuvmcpsrvp01/jules_api`) and GitHub token
-- GitHub remote configured on the repo (`git remote -v` must show github.com)
-- Plan file with `### Task N: Title` headers (see plan_parser.py for format)
+4. **Handle Jules questions**
+   - When a task shows `NEEDS_INPUT`, Jules has asked a question.
+   - If the answer is in the plan body, AGENTS.md, or codebase context, use `<skill-path>/scripts/jules-run jules_cli.py chat --session-id <id>` to answer it.
+   - If it requires a judgment call or credentials, escalate to the user.
 
-## Running a Plan
-
-### Interactive mode (stays running until all tasks complete)
-```bash
-<skill-path>/scripts/jules-run run_plan.py docs/plans/my-plan.md
-```
-
-### Poll-once mode (single cycle, for cron or /loop)
-```bash
-<skill-path>/scripts/jules-run run_plan.py docs/plans/my-plan.md \
-  --poll-once --state-file /tmp/jules_state.json
-```
-
-## Monitoring with /loop
-
-Use Claude Code's `/loop` to poll periodically:
-```
-/loop 60 <skill-path>/scripts/jules-run run_plan.py <plan-file> --poll-once --state-file /tmp/jules_state.json
-```
-
-## Handling Jules Questions
-
-When Jules asks a question (session state `WAITING_FOR_USER_RESPONSE`):
-
-- **Auto-answer** if the answer is in the plan body, AGENTS.md, or codebase context
-- **Escalate to user** if it requires a judgment call, architectural decision, or credential
-
-Use `jules_cli.py chat --session-id <id>` for interactive Q&A with a session.
-
-## Claude Tasks
-
-Tasks with `executor: claude` are not sent to Jules. Instead, dispatch them using `superpowers:subagent-driven-development` with the task body as the prompt.
-
-## CLI Commands
-
-```bash
-<skill-path>/scripts/jules-run jules_cli.py create --prompt "Fix the bug"
-<skill-path>/scripts/jules-run jules_cli.py status --session-id <id>
-<skill-path>/scripts/jules-run jules_cli.py chat --session-id <id>
-<skill-path>/scripts/jules-run jules_cli.py merge --session-id <id>
-<skill-path>/scripts/jules-run jules_cli.py list [--state CODING]
-```
-
-## Red Flags
-
-- Never auto-merge without COMPLETED state
-- Never exceed `max_concurrent_sessions` from config
-- Never skip logging failed tasks
-- Always `pull --rebase` before launching tasks from a worktree
+5. **Report results**
+   - When all tasks reach a terminal state, present the final summary to the user.
+   - Flag any failed tasks with their error messages.
 
 ## Troubleshooting
 
-See [references/troubleshooting.md](references/troubleshooting.md) for common issues.
+See [README.md](README.md) for CLI usage and [references/troubleshooting.md](references/troubleshooting.md) for common issues.

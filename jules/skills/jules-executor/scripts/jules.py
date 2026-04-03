@@ -82,7 +82,7 @@ def get_jules_api_key():
     try:
         client = _vault_client()
         return client.secrets.kv.v2.read_secret_version(
-            path="hosts/tuvmcpsrvp01/jules_api"
+            path="hosts/tupflow13p01/jules_api"
         )["data"]["data"]["value"].strip()
     except Exception as e:
         raise JulesError(f"Failed to retrieve Jules API key from Vault: {e}")
@@ -96,7 +96,7 @@ def get_github_token():
     try:
         client = _vault_client()
         secret = client.secrets.kv.v2.read_secret_version(
-            path="hosts/tuvmcpsrvp01/github_token"
+            path="hosts/tupflow13p01/github_token"
         )
         return secret["data"]["data"]["value"].strip()
     except Exception:
