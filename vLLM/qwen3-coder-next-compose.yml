@@ -1,0 +1,32 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    runtime: nvidia
+    ports:
+      - "8200:8000"
+    environment:
+      - NCCL_P2P_DISABLE=1
+      - NCCL_IB_DISABLE=1
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      --model cyankiwi/Qwen3-Coder-Next-AWQ-4bit
+      --tensor-parallel-size 4
+      --max-model-len 131072
+      --kv-cache-dtype fp8
+      --max-num-seqs 8
+      --enable-auto-tool-choice
+      --gpu-memory-utilization 0.90
+      --trust-remote-code
+      --tool-call-parser qwen3_xml
+      --enable-prefix-caching
+    restart: unless-stopped
+    ipc: host

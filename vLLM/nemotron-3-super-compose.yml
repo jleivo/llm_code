@@ -1,0 +1,38 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    runtime: nvidia
+    ports:
+      - "8200:8000"
+    environment:
+      - NCCL_P2P_DISABLE=1
+      - NCCL_IB_DISABLE=1
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      --model cyankiwi/NVIDIA-Nemotron-3-Super-120B-A12B-AWQ-4bit
+      --async-scheduling
+      --dtype auto
+      --kv-cache-dtype fp8
+      --enable-expert-parallel
+      --trust-remote-code
+      --tensor-parallel-size 4
+      --max-model-len 81920
+      --enable-chunked-prefill
+      --max-num-seqs 4
+      --gpu-memory-utilization 0.90
+      --enable-prefix-caching
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_xml
+      --reasoning-parser nemotron_v3
+      --trust-remote-code
+    restart: unless-stopped
+    ipc: host

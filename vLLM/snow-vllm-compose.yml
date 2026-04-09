@@ -1,0 +1,23 @@
+services:
+  vllm-arctic-embed2:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    command: >
+      --model Snowflake/snowflake-arctic-embed-l-v2.0
+      --runner pooling
+      --convert embed
+      --dtype=half
+      --gpu-memory-utilization 0.3
+      --trust_remote_code
+      --host 0.0.0.0
+      --port 8000
+      --no-enable-lora
+
+volumes:
+  huggingface_cache:
+    driver: local
