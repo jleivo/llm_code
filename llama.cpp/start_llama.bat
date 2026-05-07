@@ -1,0 +1,1 @@
+C:\Users\juha.LHE\.cache\lemonade\bin\llamacpp\vulkan\llama-server.exe --models-preset C:\Users\juha.LHE\llama-models.ini --host 0.0.0.0 --port 8080 --models-max 5
