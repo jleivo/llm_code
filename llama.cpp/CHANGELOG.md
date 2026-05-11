@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `README.md` with usage, configuration, and port documentation
+- Pester unit tests covering configuration, arguments, process management,
+  cleanup logic, and `.bat` delegation
+
 ## [1.0.1] - 2026-05-11
 
 ### Added
