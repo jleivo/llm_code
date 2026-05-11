@@ -4,7 +4,7 @@ This repository is designed contain all the little management scripts, modelfile
 
 ## General Setup
 
-This repository uses bash and python languages. Each new script is placed under the corresponding language folder (bash/python, possible others). The scripts directory contains include CHANGELOG, README and tests -directory containing unittests tests or functional tests.
+This repository uses bash, python, and PowerShell languages. Each new script is placed under the corresponding language folder (bash/python/powershell, possible others). The scripts directory contains include CHANGELOG, README and tests -directory containing unittests tests or functional tests.
 
 ## Git Commit Message Guidelines
 
@@ -40,6 +40,7 @@ Keep commit messages short and to the point, focusing on what was changed and wh
 - Linting is used for each language
   - shellcheck for bash
   - pylint for python
+  - PSScriptAnalyzer for PowerShell
 - Each script must have a header, where the first line is the shebang for the appropriate binary and the second line is the version number, which must align with CHANGELOG.md - file
 
 ### versioning
@@ -57,10 +58,11 @@ Change in Z means a fix in any given feature
 - use pytest for unittests
 - Write multiple test methods that cover a wide range of scenarios, including edge cases, exception handling, and data validation.
 
-### bash development
+### powershell development
 
-- use bats for unittests
+- use Pester for unit tests
 - Write multiple test methods that cover a wide range of scenarios, including edge cases, exception handling, and data validation.
+- use PSScriptAnalyzer for linting
 
 ### Secret handling
 
